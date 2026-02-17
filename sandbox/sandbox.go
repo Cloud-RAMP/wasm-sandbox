@@ -22,7 +22,7 @@ var invocation struct {
 
 func callOnMessage(module api.Module, message string) {
 	// Write the string to memory
-	ptr, err := createASString(module, message)
+	ptr, memLen, err := createASString(module, message)
 	if err != nil {
 		log.Fatalf("Failed to create WASM string %v", err)
 		return
@@ -30,7 +30,7 @@ func callOnMessage(module api.Module, message string) {
 
 	// Call the `onMessage` function with the pointer and length
 	onMessage := module.ExportedFunction("__onMessage")
-	_, err = onMessage.Call(context.Background(), uint64(ptr), uint64(len(message)))
+	_, err = onMessage.Call(context.Background(), ptr, memLen)
 	if err != nil {
 		log.Fatalf("Failed to call onMessage: %v", err)
 	}
