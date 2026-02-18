@@ -4,8 +4,9 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"time"
 
-	"github.com/Cloud-RAMP/wasm-sandbox/internal/modulestore"
+	"github.com/Cloud-RAMP/wasm-sandbox/internal/store"
 	"github.com/Cloud-RAMP/wasm-sandbox/pkg/handlers"
 )
 
@@ -19,7 +20,13 @@ func main() {
 		return
 	}
 
-	store, err := modulestore.NewSandboxStore()
+	store, err := store.NewSandboxStore(store.SandboxStoreCfg{
+		CleanupInterval:    5 * time.Second,
+		MaxIdleTime:        6 * time.Second,
+		MemoryLimitPages:   10,
+		CloseOnContextDone: true,
+	})
+
 	if err != nil {
 		fmt.Println("Failed to make sandbox store", err)
 		return

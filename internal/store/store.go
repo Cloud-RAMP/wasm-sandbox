@@ -1,4 +1,4 @@
-package modulestore
+package store
 
 import (
 	"context"
@@ -16,13 +16,13 @@ import (
 )
 
 type SandboxStore struct {
-	runtime        wazero.Runtime
-	hostModule     api.Module
-	moduleConfig   wazero.ModuleConfig
-	activeModules  map[string]*ActiveModule
-	modulesMutex   sync.RWMutex // rw mutex might not be entirely necessary
-	invocationData InvocationData
-	dataMutex      sync.Mutex
+	runtime         wazero.Runtime
+	hostModule      api.Module
+	moduleConfig    wazero.ModuleConfig
+	activeModules   map[string]*ActiveModule
+	maxIdleTime     time.Duration
+	cleanupInterval time.Duration
+	mu              sync.RWMutex // rw mutex might not be entirely necessary
 }
 
 type ActiveModule struct {
@@ -37,20 +37,27 @@ type InvocationData struct {
 }
 
 type SandboxStoreCfg struct {
-	MemoryLimitPages   uint8
+	MemoryLimitPages   uint32
 	CloseOnContextDone bool
+	MaxIdleTime        time.Duration
+	CleanupInterval    time.Duration
 	Ctx                context.Context
 }
 
 // Will probably need to pass a ctx into this later, or limit execution time somehow
-func NewSandboxStore() (*SandboxStore, error) {
+func NewSandboxStore(cfg SandboxStoreCfg) (*SandboxStore, error) {
 	ctx := context.Background()
+
+	memPages := cfg.MemoryLimitPages
+	if memPages == 0 {
+		memPages = 10
+	}
 
 	// Create runtime with limits
 	runtime := wazero.NewRuntimeWithConfig(ctx,
 		wazero.NewRuntimeConfig().
-			WithMemoryLimitPages(10).
-			WithCloseOnContextDone(true))
+			WithMemoryLimitPages(memPages).
+			WithCloseOnContextDone(cfg.CloseOnContextDone))
 
 	// Build host module once
 	hostModule, err := builder.BuildHostModule(runtime)
@@ -59,20 +66,29 @@ func NewSandboxStore() (*SandboxStore, error) {
 		return nil, err
 	}
 
-	return &SandboxStore{
+	store := &SandboxStore{
 		runtime:       runtime,
 		hostModule:    hostModule,
 		moduleConfig:  wazero.NewModuleConfig(),
 		activeModules: make(map[string]*ActiveModule),
-	}, nil
+	}
+
+	// auto-clean up modules if cleanup interval and max idle time are defined
+	if cfg.CleanupInterval != 0 && cfg.MaxIdleTime != 0 {
+		store.cleanupInterval = cfg.CleanupInterval
+		store.maxIdleTime = cfg.MaxIdleTime
+		store.StartCleanupRoutine()
+	}
+
+	return store, nil
 }
 
 // Loads a given module into the sandbox store
 //
 // Returns an error if instantiation failed
 func (s *SandboxStore) LoadModule(moduleId string, wasmBytes []byte) error {
-	s.modulesMutex.Lock()
-	defer s.modulesMutex.Unlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
 	// Check if already loaded
 	if _, exists := s.activeModules[moduleId]; exists {
@@ -99,21 +115,14 @@ func (s *SandboxStore) LoadModule(moduleId string, wasmBytes []byte) error {
 
 // Execute a function on a given module
 func (s *SandboxStore) ExecuteOnModule(ctx context.Context, moduleId string, handler handlers.Handler, payload string) ([]events.Event, error) {
-	s.modulesMutex.RLock()
+	s.mu.RLock()
 	active, exists := s.activeModules[moduleId]
-	s.modulesMutex.RUnlock()
+	s.mu.RUnlock()
 
 	// should be loaded from some external store
 	if !exists {
 		return nil, fmt.Errorf("module %s not loaded", moduleId)
 	}
-
-	// Reset invocation data for this execution
-	s.dataMutex.Lock()
-	s.invocationData = InvocationData{
-		Events: []events.Event{},
-	}
-	s.dataMutex.Unlock()
 
 	// operate on the requested handler
 	switch handler {
@@ -135,8 +144,70 @@ func (s *SandboxStore) ExecuteOnModule(ctx context.Context, moduleId string, han
 		return nil, fmt.Errorf("Bad handler")
 	}
 
-	// Return captured events
-	s.dataMutex.Lock()
-	defer s.dataMutex.Unlock()
-	return s.invocationData.Events, nil
+	return nil, nil
+}
+
+// Removes a module from the sandbox store and closes it
+func (s *SandboxStore) RemoveModule(ctx context.Context, moduleId string) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	s.mu.Lock()
+	module, exists := s.activeModules[moduleId]
+	if !exists {
+		s.mu.Unlock()
+		return nil
+	} else {
+		// remove module from active so that nobody can access it
+		delete(s.activeModules, moduleId)
+	}
+	s.mu.Unlock()
+
+	return module.module.Close(ctx)
+}
+
+// Close all modules and remove them from the map
+
+func (s *SandboxStore) Close(ctx context.Context) error {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	for id, active := range s.activeModules {
+		active.module.Close(ctx)
+		delete(s.activeModules, id)
+	}
+
+	// close the host module as well
+	if s.hostModule != nil {
+		s.hostModule.Close(ctx)
+	}
+
+	return s.runtime.Close(ctx)
+}
+
+func (s *SandboxStore) CleanupIdleModules() {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	for id, active := range s.activeModules {
+		if time.Since(active.lastUsed) > s.maxIdleTime {
+			active.module.Close(context.Background())
+			delete(s.activeModules, id)
+			log.Printf("Unloaded idle module: %s", id)
+		}
+	}
+}
+
+func (s *SandboxStore) StartCleanupRoutine() {
+	go func() {
+		ticker := time.NewTicker(s.cleanupInterval)
+		for range ticker.C {
+			s.CleanupIdleModules()
+		}
+	}()
 }
