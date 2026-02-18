@@ -8,6 +8,16 @@ const (
 )
 
 type Event struct {
-	Payload string
-	Type    EventType
+	Payload    string
+	Type       EventType
+	InstanceId string
+}
+
+var eventStrings = [...]string{
+	"abort",
+	"broadcast",
+}
+
+func (e EventType) String() string {
+	return eventStrings[e]
 }

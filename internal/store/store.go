@@ -23,6 +23,7 @@ type SandboxStore struct {
 	maxIdleTime     time.Duration
 	cleanupInterval time.Duration
 	mu              sync.RWMutex // rw mutex might not be entirely necessary
+	eventChan       chan events.Event
 }
 
 type ActiveModule struct {
@@ -32,16 +33,17 @@ type ActiveModule struct {
 	instanceId string
 }
 
-type InvocationData struct {
-	Events []events.Event
-}
-
 type SandboxStoreCfg struct {
 	MemoryLimitPages   uint32
 	CloseOnContextDone bool
 	MaxIdleTime        time.Duration
 	CleanupInterval    time.Duration
 	Ctx                context.Context
+}
+
+// Returns a read-only channel of events coming from instances
+func (s *SandboxStore) Events() <-chan events.Event {
+	return s.eventChan
 }
 
 // Will probably need to pass a ctx into this later, or limit execution time somehow
@@ -59,8 +61,11 @@ func NewSandboxStore(cfg SandboxStoreCfg) (*SandboxStore, error) {
 			WithMemoryLimitPages(memPages).
 			WithCloseOnContextDone(cfg.CloseOnContextDone))
 
+	// eventChan is unbuffered, so events will not be stored. There has to be a listener on the other end of it
+	eventChan := make(chan events.Event)
+
 	// Build host module once
-	hostModule, err := builder.BuildHostModule(runtime)
+	hostModule, err := builder.BuildHostModule(runtime, eventChan)
 	if err != nil {
 		runtime.Close(ctx)
 		return nil, err
@@ -71,6 +76,7 @@ func NewSandboxStore(cfg SandboxStoreCfg) (*SandboxStore, error) {
 		hostModule:    hostModule,
 		moduleConfig:  wazero.NewModuleConfig(),
 		activeModules: make(map[string]*ActiveModule),
+		eventChan:     eventChan,
 	}
 
 	// auto-clean up modules if cleanup interval and max idle time are defined
@@ -124,6 +130,9 @@ func (s *SandboxStore) ExecuteOnModule(ctx context.Context, moduleId string, han
 		return nil, fmt.Errorf("module %s not loaded", moduleId)
 	}
 
+	// create inner context with instanceId key / value
+	ctx = context.WithValue(ctx, "instanceId", moduleId)
+
 	// operate on the requested handler
 	switch handler {
 	case handlers.ON_MESSAGE:
@@ -135,7 +144,7 @@ func (s *SandboxStore) ExecuteOnModule(ctx context.Context, moduleId string, han
 
 		// Call the `onMessage` function with the pointer and length
 		onMessage := active.module.ExportedFunction(handler.String())
-		_, err = onMessage.Call(context.Background(), ptr, memLen)
+		_, err = onMessage.Call(ctx, ptr, memLen)
 		if err != nil {
 			log.Fatalf("%s failed: %v", handler.String(), err)
 		}
@@ -187,6 +196,7 @@ func (s *SandboxStore) Close(ctx context.Context) error {
 		s.hostModule.Close(ctx)
 	}
 
+	close(s.eventChan)
 	return s.runtime.Close(ctx)
 }
 

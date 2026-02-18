@@ -37,5 +37,15 @@ func main() {
 		return
 	}
 
+	go func() {
+		for e := range store.Events() {
+			fmt.Println("New event:")
+			fmt.Printf("%s from %s\n%s\n", e.Type.String(), e.InstanceId, e.Payload)
+		}
+	}()
+
 	store.ExecuteOnModule(ctx, "first", handlers.ON_MESSAGE, "hello, world!")
+
+	// sleep so that we can read the event
+	time.Sleep(1 * time.Second)
 }
