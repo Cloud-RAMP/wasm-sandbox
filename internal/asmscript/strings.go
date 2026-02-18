@@ -1,4 +1,4 @@
-package sandbox
+package asmscript
 
 import (
 	"context"
@@ -8,30 +8,11 @@ import (
 	"github.com/tetratelabs/wazero/api"
 )
 
+// string types in asmscript are defined as 2
 const STRING_TYPE_ID = 2
 
-// Encode string to UTF-16 LE bytes
-func encodeUTF16LE(s string) []byte {
-	bytes := make([]byte, len(s)*2)
-	for i, r := range s {
-		binary.LittleEndian.PutUint16(bytes[i*2:], uint16(r))
-	}
-	return bytes
-}
-
-// Decode UTF-16 LE bytes to string
-func decodeUTF16LE(b []byte) string {
-	runes := make([]rune, len(b)/2)
-	for i := 0; i < len(b); i += 2 {
-		if i+1 < len(b) {
-			runes[i/2] = rune(binary.LittleEndian.Uint16(b[i:]))
-		}
-	}
-	return string(runes)
-}
-
 // Read AssemblyScript string from memory
-func readASString(mem api.Memory, ptr uint32) string {
+func ReadASString(mem api.Memory, ptr uint32) string {
 	// Read length prefix (bytes 4-7)
 	lenBytes, ok := mem.Read(ptr+4, 4)
 	if !ok {
@@ -49,7 +30,7 @@ func readASString(mem api.Memory, ptr uint32) string {
 }
 
 // Create an AssemblyScript string in the module's memory
-func createASString(module api.Module, str string) (uint64, uint64, error) {
+func CreateASString(module api.Module, str string) (uint64, uint64, error) {
 	ctx := context.Background()
 
 	// Check that the runtime function exists
