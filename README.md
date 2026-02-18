@@ -15,19 +15,27 @@ The goals of this module are as follows:
 * Support function calls like "onMessage", "onJoin", "onLeave" from external service
 
 
-### APIs
+### Go APIs
 
 The main APIs that we should expose to the main program will consist mostly of these functions, assuming that if the module has not been loaded, it will be done by the internals of this project.
 These functions will also emit events, which we will need to define a consistent syntax for. This will likely be a list of structs as follows:
 ```go
 type Event struct {
-    Payload   string      // actual data being sent from the user's function
-    EventType EventType   // some enum describing the different events we support
-    Service   string      // the service that created this event. this might not be completely necessary, since the code that calls this should know what service it belongs to.
+    Payload   string        // actual data being sent from the user's function
+    EventType EventType     // some enum describing the different events we support
+    ServiceId   string      // the service that created this event. this might not be completely necessary, since the code that calls this should know what service it belongs to.
 }
 ```
-There are two possible ways to emit these events:
-* In a readonly chan that is returned from the called function
-* A list that is returned from the called function
 
-I think the chan option is the better suited one here, since events may be returned asynchronously, as opposed to all at once
+### AssemblyScript APIs
+
+These are APIs that we should provide to the programmer writing the code.
+
+* Broadcast - send message to all users in room
+* GetRoom - gets all connections in a room, this will require all users to be uniquely identified
+* ToConnection - sends a message to a websocket connection. this will require users in a room to be uniquely identified
+* Set - sets a key / value pair in external redis
+* Get - gets a key / value pair from external redis
+
+* Add a method to put custom handlers in here, since we shoudn't want the systems to be tightly coupled
+    * A user would call one of these APIs, and it would then dispatch to the custom handler

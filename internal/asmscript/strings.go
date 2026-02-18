@@ -29,7 +29,9 @@ func ReadASString(mem api.Memory, ptr uint32) string {
 	return decodeUTF16LE(data)
 }
 
-// Create an AssemblyScript string in the module's memory
+// Create an AssemblyScript string in the given module's memory
+//
+// Returns the string location, string length, and possible error
 func CreateASString(module api.Module, str string) (uint64, uint64, error) {
 	ctx := context.Background()
 

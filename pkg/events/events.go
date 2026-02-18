@@ -5,6 +5,8 @@ type EventType int
 const (
 	ABORT EventType = iota
 	BROADCAST
+	SET
+	GET
 )
 
 type Event struct {
@@ -16,6 +18,8 @@ type Event struct {
 var eventStrings = [...]string{
 	"abort",
 	"broadcast",
+	"set",
+	"get",
 }
 
 func (e EventType) String() string {

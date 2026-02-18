@@ -21,5 +21,15 @@ func BuildHostModule(runtime wazero.Runtime, eventChan chan events.Event) (api.M
 		WithFunc(getBroadcastHandler(eventChan)).
 		Export(events.BROADCAST.String())
 
+	// SET function
+	hostModuleBuilder.NewFunctionBuilder().
+		WithFunc(getSetHandler(eventChan)).
+		Export(events.SET.String())
+
+	// GET function
+	hostModuleBuilder.NewFunctionBuilder().
+		WithFunc(getGetHandler(eventChan)).
+		Export(events.GET.String())
+
 	return hostModuleBuilder.Instantiate(context.Background())
 }
