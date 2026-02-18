@@ -7,8 +7,16 @@ import (
 	"time"
 
 	"github.com/Cloud-RAMP/wasm-sandbox/internal/store"
+	"github.com/Cloud-RAMP/wasm-sandbox/pkg/events"
 	"github.com/Cloud-RAMP/wasm-sandbox/pkg/handlers"
 )
+
+func dummyHandler(event events.EventType, instanceId string, args ...string) (string, error) {
+	fmt.Println("New event")
+	fmt.Printf("Event %s from %s\n", event.String(), instanceId)
+	fmt.Println("Args:", args)
+	return "dummy", nil
+}
 
 // make the main sandbox functions that we expose here
 func main() {
@@ -25,6 +33,10 @@ func main() {
 		MaxIdleTime:        6 * time.Second,
 		MemoryLimitPages:   10,
 		CloseOnContextDone: true,
+		HandlerMap: events.NewHandlerMap().
+			AddHandler(events.GET, dummyHandler).
+			AddHandler(events.SET, dummyHandler).
+			AddHandler(events.BROADCAST, dummyHandler),
 	})
 
 	if err != nil {
@@ -37,15 +49,9 @@ func main() {
 		return
 	}
 
-	go func() {
-		for e := range store.Events() {
-			fmt.Println("New event:")
-			fmt.Printf("%s from %s\n%s\n", e.Type.String(), e.InstanceId, e.Payload)
-		}
-	}()
+	go store.ExecuteOnModule(ctx, "first", handlers.ON_MESSAGE, "hello, world!")
 
-	store.ExecuteOnModule(ctx, "first", handlers.ON_MESSAGE, "hello, world!")
-
-	// sleep so that we can read the event
-	time.Sleep(1 * time.Second)
+	// sleep so that all events can be read
+	// won't need this in the server, as it will be a long running process
+	time.Sleep(3 * time.Second)
 }

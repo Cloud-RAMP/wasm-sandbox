@@ -23,7 +23,7 @@ type SandboxStore struct {
 	maxIdleTime     time.Duration
 	cleanupInterval time.Duration
 	mu              sync.RWMutex // rw mutex might not be entirely necessary
-	eventChan       chan events.Event
+	handlerMap      events.HandlerMap
 }
 
 type ActiveModule struct {
@@ -38,12 +38,8 @@ type SandboxStoreCfg struct {
 	CloseOnContextDone bool
 	MaxIdleTime        time.Duration
 	CleanupInterval    time.Duration
+	HandlerMap         *events.HandlerMap
 	Ctx                context.Context
-}
-
-// Returns a read-only channel of events coming from instances
-func (s *SandboxStore) Events() <-chan events.Event {
-	return s.eventChan
 }
 
 // Will probably need to pass a ctx into this later, or limit execution time somehow
@@ -61,11 +57,8 @@ func NewSandboxStore(cfg SandboxStoreCfg) (*SandboxStore, error) {
 			WithMemoryLimitPages(memPages).
 			WithCloseOnContextDone(cfg.CloseOnContextDone))
 
-	// eventChan is unbuffered, so events will not be stored. There has to be a listener on the other end of it
-	eventChan := make(chan events.Event)
-
 	// Build host module once
-	hostModule, err := builder.BuildHostModule(runtime, eventChan)
+	hostModule, err := builder.BuildHostModule(runtime, cfg.HandlerMap)
 	if err != nil {
 		runtime.Close(ctx)
 		return nil, err
@@ -76,7 +69,6 @@ func NewSandboxStore(cfg SandboxStoreCfg) (*SandboxStore, error) {
 		hostModule:    hostModule,
 		moduleConfig:  wazero.NewModuleConfig(),
 		activeModules: make(map[string]*ActiveModule),
-		eventChan:     eventChan,
 	}
 
 	// auto-clean up modules if cleanup interval and max idle time are defined
@@ -196,7 +188,6 @@ func (s *SandboxStore) Close(ctx context.Context) error {
 		s.hostModule.Close(ctx)
 	}
 
-	close(s.eventChan)
 	return s.runtime.Close(ctx)
 }
 

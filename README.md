@@ -38,4 +38,4 @@ These are APIs that we should provide to the programmer writing the code.
 * Get - gets a key / value pair from external redis
 
 * Add a method to put custom handlers in here, since we shoudn't want the systems to be tightly coupled
-    * A user would call one of these APIs, and it would then dispatch to the custom handler
+    * Users need to define events in an events.HandlerMap, which should complete any external calls required (redis, persistent storage, etc.)

@@ -10,7 +10,7 @@ import (
 	"github.com/tetratelabs/wazero/api"
 )
 
-func getAbortHandler(_ chan events.Event) any {
+func abortHandler(_ *events.HandlerMap) any {
 	return func(ctx context.Context, mod api.Module, messagePtr uint32, fileNamePtr uint32, line uint32, column uint32) {
 		if mod != nil {
 			message := asmscript.ReadASString(mod.Memory(), messagePtr)
@@ -21,7 +21,7 @@ func getAbortHandler(_ chan events.Event) any {
 }
 
 // Return a closure so that we can still send events to the eventChan
-func getBroadcastHandler(eventChan chan events.Event) any {
+func broadcastHandler(handlerMap *events.HandlerMap) any {
 	return func(ctx context.Context, mod api.Module, ptr uint32, len uint32) {
 		mem := mod.Memory()
 		if mem == nil {
@@ -32,22 +32,15 @@ func getBroadcastHandler(eventChan chan events.Event) any {
 		if !ok {
 			return
 		}
-		message := string(bytes)
 
+		message := string(bytes)
 		instanceId := ctx.Value("instanceId").(string)
 
-		// set to events.BROADCAST right now, but we will need to support many different types of events coming from the SDK
-		// One idea is to set 4 bytes of the response to an event type, and the rest to the event payload
-		// That way we can differentiate events on this end
-		eventChan <- events.Event{
-			Type:       events.BROADCAST,
-			Payload:    message,
-			InstanceId: instanceId,
-		}
+		_, _ = handlerMap.CallHandler(events.BROADCAST, instanceId, message)
 	}
 }
 
-func getSetHandler(eventChan chan events.Event) any {
+func setHandler(handlerMap *events.HandlerMap) any {
 	return func(ctx context.Context, mod api.Module, keyPtr uint32, keyLen uint32, valPtr uint32, valLen uint32) {
 		mem := mod.Memory()
 		if mem == nil {
@@ -70,18 +63,12 @@ func getSetHandler(eventChan chan events.Event) any {
 
 		instanceId := ctx.Value("instanceId").(string)
 
-		// set to events.BROADCAST right now, but we will need to support many different types of events coming from the SDK
-		// One idea is to set 4 bytes of the response to an event type, and the rest to the event payload
-		// That way we can differentiate events on this end
-		eventChan <- events.Event{
-			Type:       events.SET,
-			Payload:    "SET",
-			InstanceId: instanceId,
-		}
+		handlerMap.CallHandler(events.SET, instanceId, key, val)
 	}
 }
 
-func getGetHandler(eventChan chan events.Event) any {
+// Returns a uint32 becuase it is the location in wasm memory of the returned string
+func getHandler(handlerMap *events.HandlerMap) any {
 	return func(ctx context.Context, mod api.Module, keyPtr uint32, keyLen uint32) uint32 {
 		mem := mod.Memory()
 		if mem == nil {
@@ -93,26 +80,19 @@ func getGetHandler(eventChan chan events.Event) any {
 			return 0
 		}
 		key := string(bytes)
+		instanceId := ctx.Value("instanceId").(string)
 
 		// do some sort of redis operation here
-
-		val := "Returned from redis"
-		ptr, _, err := asmscript.CreateASString(mod, val)
+		val, err := handlerMap.CallHandler(events.GET, instanceId, key)
 		if err != nil {
+			// some sort of error handling here
 			return 0
 		}
 
-		fmt.Printf("GET request for %s\n", key)
-
-		instanceId := ctx.Value("instanceId").(string)
-
-		// set to events.BROADCAST right now, but we will need to support many different types of events coming from the SDK
-		// One idea is to set 4 bytes of the response to an event type, and the rest to the event payload
-		// That way we can differentiate events on this end
-		eventChan <- events.Event{
-			Type:       events.GET,
-			Payload:    "GET",
-			InstanceId: instanceId,
+		// insert the string into module memory
+		ptr, _, err := asmscript.CreateASString(mod, val)
+		if err != nil {
+			return 0
 		}
 
 		return uint32(ptr)

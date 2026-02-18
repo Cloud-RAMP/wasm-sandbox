@@ -3,7 +3,8 @@ import { Context } from "./sdk";
 export function onMessage(msg: string): void {
   const ctx = new Context();
 
-  const str = ctx.store.get("test");
+  ctx.store.set("hello", "hello2");
 
-  ctx.room.broadcast("I got this message: " + str)
+  const str = ctx.store.get("test");
+  ctx.room.broadcast("I got: " + str);
 }
