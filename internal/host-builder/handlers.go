@@ -1,4 +1,4 @@
-package builder
+package hostbuilder
 
 import (
 	"context"
@@ -96,5 +96,32 @@ func getHandler(handlerMap *events.HandlerMap) any {
 		}
 
 		return uint32(ptr)
+	}
+}
+
+func logHandler(handlerMap *events.HandlerMap) any {
+	return func(ctx context.Context, mod api.Module, keyPtr uint32, keyLen uint32, valPtr uint32, valLen uint32) {
+		mem := mod.Memory()
+		if mem == nil {
+			return
+		}
+
+		bytes, ok := mem.Read(keyPtr, keyLen)
+		if !ok {
+			return
+		}
+		key := string(bytes)
+
+		bytes, ok = mem.Read(valPtr, valLen)
+		if !ok {
+			return
+		}
+		val := string(bytes)
+
+		fmt.Printf("SET request %s for %s\n", key, val)
+
+		instanceId := ctx.Value("instanceId").(string)
+
+		handlerMap.CallHandler(events.LOG, instanceId, key, val)
 	}
 }

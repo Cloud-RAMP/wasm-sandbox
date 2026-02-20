@@ -1,4 +1,4 @@
-package builder
+package hostbuilder
 
 import (
 	"context"
@@ -30,6 +30,10 @@ func BuildHostModule(runtime wazero.Runtime, handlerMap *events.HandlerMap) (api
 	hostModuleBuilder.NewFunctionBuilder().
 		WithFunc(getHandler(handlerMap)).
 		Export(events.GET.String())
+
+	hostModuleBuilder.NewFunctionBuilder().
+		WithFunc(logHandler(handlerMap)).
+		Export(events.LOG.String())
 
 	return hostModuleBuilder.Instantiate(context.Background())
 }

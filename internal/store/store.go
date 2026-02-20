@@ -8,7 +8,7 @@ import (
 	"time"
 
 	"github.com/Cloud-RAMP/wasm-sandbox/internal/asmscript"
-	"github.com/Cloud-RAMP/wasm-sandbox/internal/builder"
+	builder "github.com/Cloud-RAMP/wasm-sandbox/internal/host-builder"
 	"github.com/Cloud-RAMP/wasm-sandbox/pkg/events"
 	"github.com/Cloud-RAMP/wasm-sandbox/pkg/handlers"
 	"github.com/tetratelabs/wazero"

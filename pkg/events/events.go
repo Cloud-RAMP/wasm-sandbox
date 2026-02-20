@@ -11,6 +11,7 @@ const (
 	BROADCAST
 	SET
 	GET
+	LOG
 )
 
 type Event struct {
@@ -24,6 +25,7 @@ var eventStrings = [...]string{
 	"broadcast",
 	"set",
 	"get",
+	"log",
 }
 
 func (e EventType) String() string {
