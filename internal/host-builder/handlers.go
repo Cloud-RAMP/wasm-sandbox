@@ -10,6 +10,8 @@ import (
 	"github.com/tetratelabs/wazero/api"
 )
 
+// These functions all return closures that capture the value of events.HandlerMap becuause it avoids circular import issues
+
 func abortHandler(_ *events.HandlerMap) any {
 	return func(ctx context.Context, mod api.Module, messagePtr uint32, fileNamePtr uint32, line uint32, column uint32) {
 		if mod != nil {
@@ -20,7 +22,6 @@ func abortHandler(_ *events.HandlerMap) any {
 	}
 }
 
-// Return a closure so that we can still send events to the eventChan
 func broadcastHandler(handlerMap *events.HandlerMap) any {
 	return func(ctx context.Context, mod api.Module, ptr uint32, len uint32) {
 		mem := mod.Memory()
