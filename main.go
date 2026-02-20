@@ -44,7 +44,7 @@ func main() {
 		return
 	}
 
-	if err := store.LoadModuleIntoSandbox("first", wasmBytes); err != nil {
+	if err := store.LoadModuleIntoSandbox("first-instance", wasmBytes); err != nil {
 		fmt.Println("Failed to load module", err)
 		return
 	}

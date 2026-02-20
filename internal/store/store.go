@@ -133,6 +133,7 @@ func (s *SandboxStore) ExecuteOnModule(ctx context.Context, wsEvent wsevents.WSE
 	// operate on the requested wsEvent
 	switch wsEvent.EventType {
 	case wsevents.ON_MESSAGE:
+		// TODO: Can we develop a better protocol than JSON? JSON parsing is slow.
 		jsonBytes, err := json.Marshal(wsEvent)
 		if err != nil {
 			log.Fatalf("Failed to marshal wsEvent JSON %v", err)
