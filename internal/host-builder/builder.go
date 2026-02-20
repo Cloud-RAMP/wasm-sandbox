@@ -3,37 +3,37 @@ package hostbuilder
 import (
 	"context"
 
-	"github.com/Cloud-RAMP/wasm-sandbox/pkg/events"
+	wasmevents "github.com/Cloud-RAMP/wasm-sandbox/pkg/wasm-events"
 
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/api"
 )
 
-func BuildHostModule(runtime wazero.Runtime, handlerMap *events.HandlerMap) (api.Module, error) {
+func BuildHostModule(runtime wazero.Runtime, handlerMap *wasmevents.HandlerMap) (api.Module, error) {
 	hostModuleBuilder := runtime.NewHostModuleBuilder("env")
 
 	hostModuleBuilder.NewFunctionBuilder().
 		WithFunc(abortHandler(handlerMap)).
-		Export(events.ABORT.String())
+		Export(wasmevents.ABORT.String())
 
 	// Broadcast function
 	hostModuleBuilder.NewFunctionBuilder().
 		WithFunc(broadcastHandler(handlerMap)).
-		Export(events.BROADCAST.String())
+		Export(wasmevents.BROADCAST.String())
 
 	// SET function
 	hostModuleBuilder.NewFunctionBuilder().
 		WithFunc(setHandler(handlerMap)).
-		Export(events.SET.String())
+		Export(wasmevents.SET.String())
 
 	// GET function
 	hostModuleBuilder.NewFunctionBuilder().
 		WithFunc(getHandler(handlerMap)).
-		Export(events.GET.String())
+		Export(wasmevents.GET.String())
 
 	hostModuleBuilder.NewFunctionBuilder().
 		WithFunc(logHandler(handlerMap)).
-		Export(events.LOG.String())
+		Export(wasmevents.LOG.String())
 
 	return hostModuleBuilder.Instantiate(context.Background())
 }

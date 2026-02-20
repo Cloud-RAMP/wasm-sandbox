@@ -6,13 +6,13 @@ import (
 	"log"
 
 	"github.com/Cloud-RAMP/wasm-sandbox/internal/asmscript"
-	"github.com/Cloud-RAMP/wasm-sandbox/pkg/events"
+	wasmevents "github.com/Cloud-RAMP/wasm-sandbox/pkg/wasm-events"
 	"github.com/tetratelabs/wazero/api"
 )
 
 // These functions all return closures that capture the value of events.HandlerMap becuause it avoids circular import issues
 
-func abortHandler(_ *events.HandlerMap) any {
+func abortHandler(_ *wasmevents.HandlerMap) any {
 	return func(ctx context.Context, mod api.Module, messagePtr uint32, fileNamePtr uint32, line uint32, column uint32) {
 		if mod != nil {
 			message := asmscript.ReadASString(mod.Memory(), messagePtr)
@@ -22,7 +22,7 @@ func abortHandler(_ *events.HandlerMap) any {
 	}
 }
 
-func broadcastHandler(handlerMap *events.HandlerMap) any {
+func broadcastHandler(handlerMap *wasmevents.HandlerMap) any {
 	return func(ctx context.Context, mod api.Module, ptr uint32, len uint32) {
 		mem := mod.Memory()
 		if mem == nil {
@@ -37,11 +37,11 @@ func broadcastHandler(handlerMap *events.HandlerMap) any {
 		message := string(bytes)
 		instanceId := ctx.Value("instanceId").(string)
 
-		_, _ = handlerMap.CallHandler(events.BROADCAST, instanceId, message)
+		_, _ = handlerMap.CallHandler(wasmevents.BROADCAST, instanceId, message)
 	}
 }
 
-func setHandler(handlerMap *events.HandlerMap) any {
+func setHandler(handlerMap *wasmevents.HandlerMap) any {
 	return func(ctx context.Context, mod api.Module, keyPtr uint32, keyLen uint32, valPtr uint32, valLen uint32) {
 		mem := mod.Memory()
 		if mem == nil {
@@ -64,12 +64,12 @@ func setHandler(handlerMap *events.HandlerMap) any {
 
 		instanceId := ctx.Value("instanceId").(string)
 
-		handlerMap.CallHandler(events.SET, instanceId, key, val)
+		handlerMap.CallHandler(wasmevents.SET, instanceId, key, val)
 	}
 }
 
 // Returns a uint32 becuase it is the location in wasm memory of the returned string
-func getHandler(handlerMap *events.HandlerMap) any {
+func getHandler(handlerMap *wasmevents.HandlerMap) any {
 	return func(ctx context.Context, mod api.Module, keyPtr uint32, keyLen uint32) uint32 {
 		mem := mod.Memory()
 		if mem == nil {
@@ -84,7 +84,7 @@ func getHandler(handlerMap *events.HandlerMap) any {
 		instanceId := ctx.Value("instanceId").(string)
 
 		// do some sort of redis operation here
-		val, err := handlerMap.CallHandler(events.GET, instanceId, key)
+		val, err := handlerMap.CallHandler(wasmevents.GET, instanceId, key)
 		if err != nil {
 			// some sort of error handling here
 			return 0
@@ -100,7 +100,7 @@ func getHandler(handlerMap *events.HandlerMap) any {
 	}
 }
 
-func logHandler(handlerMap *events.HandlerMap) any {
+func logHandler(handlerMap *wasmevents.HandlerMap) any {
 	return func(ctx context.Context, mod api.Module, keyPtr uint32, keyLen uint32, valPtr uint32, valLen uint32) {
 		mem := mod.Memory()
 		if mem == nil {
@@ -123,6 +123,6 @@ func logHandler(handlerMap *events.HandlerMap) any {
 
 		instanceId := ctx.Value("instanceId").(string)
 
-		handlerMap.CallHandler(events.LOG, instanceId, key, val)
+		handlerMap.CallHandler(wasmevents.LOG, instanceId, key, val)
 	}
 }

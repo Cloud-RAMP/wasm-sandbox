@@ -7,11 +7,11 @@ import (
 	"time"
 
 	"github.com/Cloud-RAMP/wasm-sandbox/internal/store"
-	"github.com/Cloud-RAMP/wasm-sandbox/pkg/events"
-	"github.com/Cloud-RAMP/wasm-sandbox/pkg/handlers"
+	wasmevents "github.com/Cloud-RAMP/wasm-sandbox/pkg/wasm-events"
+	wsevents "github.com/Cloud-RAMP/wasm-sandbox/pkg/ws-events"
 )
 
-func dummyHandler(event events.EventType, instanceId string, args ...string) (string, error) {
+func dummyHandler(event wasmevents.WASMEventType, instanceId string, args ...string) (string, error) {
 	fmt.Println("New event")
 	fmt.Printf("Event %s from %s\n", event.String(), instanceId)
 	fmt.Println("Args:", args)
@@ -33,10 +33,10 @@ func main() {
 		MaxIdleTime:        6 * time.Second,
 		MemoryLimitPages:   10,
 		CloseOnContextDone: true,
-		HandlerMap: events.NewHandlerMap().
-			AddHandler(events.GET, dummyHandler).
-			AddHandler(events.SET, dummyHandler).
-			AddHandler(events.BROADCAST, dummyHandler),
+		HandlerMap: wasmevents.NewHandlerMap().
+			AddHandler(wasmevents.GET, dummyHandler).
+			AddHandler(wasmevents.SET, dummyHandler).
+			AddHandler(wasmevents.BROADCAST, dummyHandler),
 	})
 
 	if err != nil {
@@ -49,7 +49,7 @@ func main() {
 		return
 	}
 
-	go store.ExecuteOnModule(ctx, "first", handlers.ON_MESSAGE, "hello, world!")
+	go store.ExecuteOnModule(ctx, "first", wsevents.ON_MESSAGE, "hello, world!")
 
 	// sleep so that all events can be read
 	// won't need this in the server, as it will be a long running process

@@ -34,8 +34,16 @@ These are APIs that we should provide to the programmer writing the code.
 * Broadcast - send message to all users in room
 * GetRoom - gets all connections in a room, this will require all users to be uniquely identified
 * ToConnection - sends a message to a websocket connection. this will require users in a room to be uniquely identified
-* Set - sets a key / value pair in external redis
 * Get - gets a key / value pair from external redis
+* Set - sets a key / value pair in external redis
+> Writing synchronously to Redis for each SET can kill performance, consider async flush to redis
+* Fetch
+* Write to durable storage (probably firebase in our case)
 
-* Add a method to put custom handlers in here, since we shoudn't want the systems to be tightly coupled
-    * Users need to define events in an events.HandlerMap, which should complete any external calls required (redis, persistent storage, etc.)
+
+### Working on
+
+* AssemblyScript SDK (could publish as a node module)
+* How to uniquely identify users
+    * This will likely be done at the WebSocket server level, we will simply need to use that information to operate (make it a function parameter)
+* How to have users write code that we can easily package and compile to WASM

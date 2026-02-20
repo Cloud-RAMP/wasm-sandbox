@@ -9,8 +9,8 @@ import (
 
 	"github.com/Cloud-RAMP/wasm-sandbox/internal/asmscript"
 	builder "github.com/Cloud-RAMP/wasm-sandbox/internal/host-builder"
-	"github.com/Cloud-RAMP/wasm-sandbox/pkg/events"
-	"github.com/Cloud-RAMP/wasm-sandbox/pkg/handlers"
+	wasmevents "github.com/Cloud-RAMP/wasm-sandbox/pkg/wasm-events"
+	wsevents "github.com/Cloud-RAMP/wasm-sandbox/pkg/ws-events"
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/api"
 )
@@ -23,7 +23,7 @@ type SandboxStore struct {
 	maxIdleTime     time.Duration
 	cleanupInterval time.Duration
 	mu              sync.RWMutex // rw mutex might not be entirely necessary
-	handlerMap      events.HandlerMap
+	handlerMap      wasmevents.HandlerMap
 }
 
 type ActiveModule struct {
@@ -38,7 +38,7 @@ type SandboxStoreCfg struct {
 	CloseOnContextDone bool
 	MaxIdleTime        time.Duration
 	CleanupInterval    time.Duration
-	HandlerMap         *events.HandlerMap
+	HandlerMap         *wasmevents.HandlerMap
 	Ctx                context.Context
 }
 
@@ -112,7 +112,7 @@ func (s *SandboxStore) LoadModule(moduleId string, wasmBytes []byte) error {
 }
 
 // Execute a function on a given module
-func (s *SandboxStore) ExecuteOnModule(ctx context.Context, moduleId string, handler handlers.Handler, payload string) ([]events.Event, error) {
+func (s *SandboxStore) ExecuteOnModule(ctx context.Context, moduleId string, wsEvent wsevents.WSEventType, payload string) ([]wasmevents.WASMEvent, error) {
 	s.mu.RLock()
 	active, exists := s.activeModules[moduleId]
 	s.mu.RUnlock()
@@ -125,9 +125,9 @@ func (s *SandboxStore) ExecuteOnModule(ctx context.Context, moduleId string, han
 	// create inner context with instanceId key / value
 	ctx = context.WithValue(ctx, "instanceId", moduleId)
 
-	// operate on the requested handler
-	switch handler {
-	case handlers.ON_MESSAGE:
+	// operate on the requested wsEvent
+	switch wsEvent {
+	case wsevents.ON_MESSAGE:
 		ptr, memLen, err := asmscript.CreateASString(active.module, payload)
 		if err != nil {
 			log.Fatalf("Failed to create WASM string %v", err)
@@ -135,14 +135,14 @@ func (s *SandboxStore) ExecuteOnModule(ctx context.Context, moduleId string, han
 		}
 
 		// Call the `onMessage` function with the pointer and length
-		onMessage := active.module.ExportedFunction(handler.String())
+		onMessage := active.module.ExportedFunction(wsEvent.String())
 		_, err = onMessage.Call(ctx, ptr, memLen)
 		if err != nil {
-			log.Fatalf("%s failed: %v", handler.String(), err)
+			log.Fatalf("%s failed: %v", wsEvent.String(), err)
 		}
 	default:
-		fmt.Printf("Unimplemented handler! %v", handler)
-		return nil, fmt.Errorf("Bad handler")
+		fmt.Printf("Unimplemented wsEvent! %v", wsEvent)
+		return nil, fmt.Errorf("Bad wsEvent")
 	}
 
 	return nil, nil
