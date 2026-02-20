@@ -14,10 +14,22 @@ const (
 	LOG
 )
 
-type WASMEvent struct {
-	Payload    string
-	Type       WASMEventType
-	InstanceId string
+type WASMEventInfo struct {
+	// The unique ID of the connection sending this message
+	ConnectionId string `json:"connection_id"`
+
+	// The room to which the user is sending the message.
+	// Maybe this can be optional if the application doesn't use rooms?
+	RoomId string `json:"room_id"`
+
+	// The unique ID of the application that this event is being sent to
+	InstanceId string `json:"instance_id"`
+
+	EventType WASMEventType `jsonL:"event_type"`
+	Payload   []string      `json:"payload"`
+
+	// The unix millisecond timestamp of the message
+	Timestamp int64 `json:"timestamp"`
 }
 
 var eventStrings = [...]string{
@@ -32,7 +44,7 @@ func (e WASMEventType) String() string {
 	return eventStrings[e]
 }
 
-type HandlerFunction func(WASMEventType, string, ...string) (string, error)
+type HandlerFunction func(WASMEventInfo) (string, error)
 type HandlerMap map[WASMEventType]HandlerFunction
 
 func NewHandlerMap() *HandlerMap {
@@ -46,13 +58,13 @@ func (m *HandlerMap) AddHandler(event WASMEventType, handler HandlerFunction) *H
 	return m
 }
 
-func (m *HandlerMap) CallHandler(event WASMEventType, instanceId string, args ...string) (string, error) {
-	h, ok := (*m)[event]
+func (m *HandlerMap) CallHandler(event WASMEventInfo) (string, error) {
+	h, ok := (*m)[event.EventType]
 	if !ok {
-		return "", fmt.Errorf("No handler present for %s event", event.String())
+		return "", fmt.Errorf("No handler present for %s event", event.EventType.String())
 	}
 
-	fmt.Printf("Event: %s, instance: %s, args: %v\n", event.String(), instanceId, args)
+	fmt.Printf("Event: %s, instance: %s, args: %v\n", event.EventType.String(), event.InstanceId, event.Payload)
 
-	return h(event, instanceId, args...)
+	return h(event)
 }

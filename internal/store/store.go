@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log"
 	"sync"
@@ -84,7 +85,7 @@ func NewSandboxStore(cfg SandboxStoreCfg) (*SandboxStore, error) {
 // Loads a given module into the sandbox store
 //
 // Returns an error if instantiation failed
-func (s *SandboxStore) LoadModule(moduleId string, wasmBytes []byte) error {
+func (s *SandboxStore) LoadModuleIntoSandbox(moduleId string, wasmBytes []byte) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
@@ -112,40 +113,52 @@ func (s *SandboxStore) LoadModule(moduleId string, wasmBytes []byte) error {
 }
 
 // Execute a function on a given module
-func (s *SandboxStore) ExecuteOnModule(ctx context.Context, moduleId string, wsEvent wsevents.WSEventType, payload string) ([]wasmevents.WASMEvent, error) {
+//
+// The event will be handled by whatever custom event handler the user has set up
+func (s *SandboxStore) ExecuteOnModule(ctx context.Context, wsEvent wsevents.WSEventInfo) error {
 	s.mu.RLock()
-	active, exists := s.activeModules[moduleId]
+	active, exists := s.activeModules[wsEvent.InstanceId]
 	s.mu.RUnlock()
 
 	// should be loaded from some external store
 	if !exists {
-		return nil, fmt.Errorf("module %s not loaded", moduleId)
+		return fmt.Errorf("module %s not loaded", wsEvent.InstanceId)
 	}
 
 	// create inner context with instanceId key / value
-	ctx = context.WithValue(ctx, "instanceId", moduleId)
+	ctx = context.WithValue(ctx, "instanceId", wsEvent.InstanceId)
+	ctx = context.WithValue(ctx, "connectionId", wsEvent.ConnectionId)
+	ctx = context.WithValue(ctx, "roomId", wsEvent.RoomId)
 
 	// operate on the requested wsEvent
-	switch wsEvent {
+	switch wsEvent.EventType {
 	case wsevents.ON_MESSAGE:
-		ptr, memLen, err := asmscript.CreateASString(active.module, payload)
+		// TODO: Can we develop a better protocol than JSON? JSON parsing is slow.
+		jsonBytes, err := json.Marshal(wsEvent)
+		if err != nil {
+			log.Fatalf("Failed to marshal wsEvent JSON %v", err)
+			return err
+		}
+
+		// TODO: add new allocator method so that we don't need to string(bytes) -> bytes
+		ptr, memLen, err := asmscript.CreateASString(active.module, string(jsonBytes))
 		if err != nil {
 			log.Fatalf("Failed to create WASM string %v", err)
-			return nil, err
+			return err
 		}
 
 		// Call the `onMessage` function with the pointer and length
-		onMessage := active.module.ExportedFunction(wsEvent.String())
+		onMessage := active.module.ExportedFunction(wsEvent.EventType.String())
 		_, err = onMessage.Call(ctx, ptr, memLen)
 		if err != nil {
-			log.Fatalf("%s failed: %v", wsEvent.String(), err)
+			log.Fatalf("%s failed: %v", wsEvent.EventType.String(), err)
 		}
 	default:
 		fmt.Printf("Unimplemented wsEvent! %v", wsEvent)
-		return nil, fmt.Errorf("Bad wsEvent")
+		return fmt.Errorf("Bad wsEvent")
 	}
 
-	return nil, nil
+	return nil
 }
 
 // Removes a module from the sandbox store and closes it

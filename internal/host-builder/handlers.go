@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"time"
 
 	"github.com/Cloud-RAMP/wasm-sandbox/internal/asmscript"
 	wasmevents "github.com/Cloud-RAMP/wasm-sandbox/pkg/wasm-events"
@@ -11,6 +12,18 @@ import (
 )
 
 // These functions all return closures that capture the value of events.HandlerMap becuause it avoids circular import issues
+
+// Returns a boilerplate WASMEvent object injected with variables from the CTX
+func getWASMEvent(ctx context.Context, eventType wasmevents.WASMEventType, payload ...string) wasmevents.WASMEventInfo {
+	return wasmevents.WASMEventInfo{
+		ConnectionId: ctx.Value("connectionId").(string),
+		InstanceId:   ctx.Value("instanceId").(string),
+		RoomId:       ctx.Value("roomId").(string),
+		Timestamp:    time.Now().UnixMilli(),
+		EventType:    eventType,
+		Payload:      payload,
+	}
+}
 
 func abortHandler(_ *wasmevents.HandlerMap) any {
 	return func(ctx context.Context, mod api.Module, messagePtr uint32, fileNamePtr uint32, line uint32, column uint32) {
@@ -34,10 +47,8 @@ func broadcastHandler(handlerMap *wasmevents.HandlerMap) any {
 			return
 		}
 
-		message := string(bytes)
-		instanceId := ctx.Value("instanceId").(string)
-
-		_, _ = handlerMap.CallHandler(wasmevents.BROADCAST, instanceId, message)
+		event := getWASMEvent(ctx, wasmevents.BROADCAST, string(bytes))
+		_, _ = handlerMap.CallHandler(event)
 	}
 }
 
@@ -62,9 +73,8 @@ func setHandler(handlerMap *wasmevents.HandlerMap) any {
 
 		fmt.Printf("SET request %s for %s\n", key, val)
 
-		instanceId := ctx.Value("instanceId").(string)
-
-		handlerMap.CallHandler(wasmevents.SET, instanceId, key, val)
+		event := getWASMEvent(ctx, wasmevents.SET, key, val)
+		handlerMap.CallHandler(event)
 	}
 }
 
@@ -80,11 +90,10 @@ func getHandler(handlerMap *wasmevents.HandlerMap) any {
 		if !ok {
 			return 0
 		}
-		key := string(bytes)
-		instanceId := ctx.Value("instanceId").(string)
+		event := getWASMEvent(ctx, wasmevents.SET, string(bytes))
 
-		// do some sort of redis operation here
-		val, err := handlerMap.CallHandler(wasmevents.GET, instanceId, key)
+		// do some sort of redis operation here, up to the external handler
+		val, err := handlerMap.CallHandler(event)
 		if err != nil {
 			// some sort of error handling here
 			return 0
@@ -101,28 +110,21 @@ func getHandler(handlerMap *wasmevents.HandlerMap) any {
 }
 
 func logHandler(handlerMap *wasmevents.HandlerMap) any {
-	return func(ctx context.Context, mod api.Module, keyPtr uint32, keyLen uint32, valPtr uint32, valLen uint32) {
+	return func(ctx context.Context, mod api.Module, strPtr uint32, strLen uint32) {
 		mem := mod.Memory()
 		if mem == nil {
 			return
 		}
 
-		bytes, ok := mem.Read(keyPtr, keyLen)
+		bytes, ok := mem.Read(strPtr, strLen)
 		if !ok {
 			return
 		}
-		key := string(bytes)
+		info := string(bytes)
 
-		bytes, ok = mem.Read(valPtr, valLen)
-		if !ok {
-			return
-		}
-		val := string(bytes)
+		fmt.Printf("LOG request for %s\n", info)
 
-		fmt.Printf("SET request %s for %s\n", key, val)
-
-		instanceId := ctx.Value("instanceId").(string)
-
-		handlerMap.CallHandler(wasmevents.LOG, instanceId, key, val)
+		event := getWASMEvent(ctx, wasmevents.LOG, info)
+		handlerMap.CallHandler(event)
 	}
 }
