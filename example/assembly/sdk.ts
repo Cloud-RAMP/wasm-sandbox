@@ -12,11 +12,17 @@ declare function _get(keyPtr: usize, keyLen: usize): usize;
 
 //@ts-ignore
 @external("env", "log")
-declare function _log(msgPtr: usize, msgLen: usize): usize;
+declare function _log(msgPtr: usize, msgLen: usize): void;
 
 //@ts-ignore
 @external("env", "debug")
-declare function _debug(msgPtr: usize, msgLen: usize): usize;
+declare function _debug(msgPtr: usize, msgLen: usize): void;
+
+export function debug(msg: string): void {
+        const msgPtr = String.UTF8.encode(msg);
+
+    _debug(changetype<usize>(msgPtr), msg.length);
+}
 
 export class Context {
   store: Store
@@ -26,14 +32,8 @@ export class Context {
     this.store = new Store()
     this.room = new Room()
   }
-
-  static debug(msg: string) {
-      const msgPtr = String.UTF8.encode(msg);
-
-    _debug(changetype<usize>(msgPtr), msg.length);
-  }
-
-  log(msg: string) {
+  
+  log(msg: string): void {
     const msgPtr = String.UTF8.encode(msg);
 
     _log(changetype<usize>(msgPtr), msg.length);

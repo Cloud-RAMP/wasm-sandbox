@@ -66,7 +66,5 @@ func (m *HandlerMap) CallHandler(event WASMEventInfo) (string, error) {
 		return "", fmt.Errorf("No handler present for %s event", event.EventType.String())
 	}
 
-	fmt.Printf("Event: %s, instance: %s, args: %v\n", event.EventType.String(), event.InstanceId, event.Payload)
-
 	return h(event)
 }

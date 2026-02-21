@@ -1,4 +1,14 @@
-export function decodeWSEvent(buf: ArrayBuffer): string[] {
+import { debug } from "./sdk";
+
+// AssemblyScript doesn't seem to allow for interfaces so we need to use a class
+export class WSEvent {
+  connectionId: string = "";
+  roomId: string = "";
+  payload: string = "";
+  timestamp: number = 0;
+}
+
+export function decodeWSEvent(buf: ArrayBuffer): WSEvent {
 
     const data = Uint8Array.wrap(buf);
     let offset = 0;
@@ -26,9 +36,16 @@ export function decodeWSEvent(buf: ArrayBuffer): string[] {
 
         // Read string bytes
         const strBytes = data.subarray(offset, offset + len);
-        result[i] = String.UTF8.decode(strBytes.buffer, true);
+        result[i] = String.UTF8.decodeUnsafe(changetype<usize>(strBytes.buffer) + strBytes.byteOffset, len);
+        debug(result[i]);
         offset += len;
     }
+    
+    const ret: WSEvent = new WSEvent();
+    ret.connectionId = result[0];
+    ret.roomId = result[1];
+    ret.timestamp = parseInt(result[2]);
+    ret.payload = result[3];
 
-    return result;
+    return ret;
 }
