@@ -15,6 +15,16 @@ var exportedWSEvents = [...]string{
 	"__onLeave",
 }
 
+func (e WSEventType) String() string {
+	return exportedWSEvents[e]
+}
+
+// This enum is an integer under the hood.
+// Therfore, we can compare it to other integers to see if it's valid
+func (e WSEventType) Valid() bool {
+	return e >= 0 && e < WSEventType(len(exportedWSEvents))
+}
+
 // This event defines info that will be sent INTO the WASM sandbox for the user to use in their code
 type WSEventInfo struct {
 	// The unique ID of the connection sending this message
@@ -35,8 +45,4 @@ type WSEventInfo struct {
 
 	// The unix millisecond timestamp of the message
 	Timestamp int64 `json:"timestamp"`
-}
-
-func (e WSEventType) String() string {
-	return exportedWSEvents[e]
 }

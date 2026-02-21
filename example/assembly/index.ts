@@ -1,1 +1,1 @@
-export { __onMessage } from "./runtime";
+export * from "./runtime";

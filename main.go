@@ -62,7 +62,7 @@ func main() {
 		InstanceId:   "first-instance",
 		RoomId:       "first-room",
 		Payload:      "hello, world!",
-		EventType:    wsevents.ON_MESSAGE,
+		EventType:    wsevents.ON_JOIN,
 		Timestamp:    time.Now().UnixMilli(),
 	}
 

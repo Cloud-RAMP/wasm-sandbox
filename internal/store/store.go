@@ -129,34 +129,17 @@ func (s *SandboxStore) ExecuteOnModule(ctx context.Context, wsEvent wsevents.WSE
 	ctx = context.WithValue(ctx, "connectionId", wsEvent.ConnectionId)
 	ctx = context.WithValue(ctx, "roomId", wsEvent.RoomId)
 
-	// operate on the requested wsEvent
-	switch wsEvent.EventType {
-	case wsevents.ON_MESSAGE:
-		// TODO: Can we develop a better protocol than JSON? JSON parsing is slow.
-		// jsonBytes, err := json.Marshal(wsEvent)
-		// if err != nil {
-		// 	log.Fatalf("Failed to marshal wsEvent JSON %v", err)
-		// 	return err
-		// }
+	if !wsEvent.EventType.Valid() {
+		return fmt.Errorf("Invalid WS event")
+	}
 
-		// // TODO: add new allocator method so that we don't need to string(bytes) -> bytes
-		// ptr, memLen, err := asmscript.CreateASString(active.module, string(jsonBytes))
-		// if err != nil {
-		// 	log.Fatalf("Failed to create WASM string %v", err)
-		// 	return err
-		// }
+	ptr, memLen, err := asmscript.WriteWSEvent(active.module, wsEvent)
 
-		ptr, memLen, err := asmscript.WriteWSEvent(active.module, wsEvent)
-
-		// Call the `onMessage` function with the pointer and length
-		onMessage := active.module.ExportedFunction(wsEvent.EventType.String())
-		_, err = onMessage.Call(ctx, ptr, memLen)
-		if err != nil {
-			log.Fatalf("%s failed: %v", wsEvent.EventType.String(), err)
-		}
-	default:
-		fmt.Printf("Unimplemented wsEvent! %v", wsEvent)
-		return fmt.Errorf("Bad wsEvent")
+	// Call the `onMessage` function with the pointer and length
+	onMessage := active.module.ExportedFunction(wsEvent.EventType.String())
+	_, err = onMessage.Call(ctx, ptr, memLen)
+	if err != nil {
+		log.Fatalf("%s failed: %v", wsEvent.EventType.String(), err)
 	}
 
 	return nil

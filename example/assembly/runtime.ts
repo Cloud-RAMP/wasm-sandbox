@@ -1,6 +1,6 @@
 import { decodeWSEvent } from "./protocol";
 import { debug } from "./sdk";
-import * as user from "./user";
+import { onMessage, onJoin, onLeave } from "./user";
 
 // Internal function to be called by the WebAssembly
 //
@@ -10,7 +10,19 @@ export function __onMessage(ptr: usize, len: usize): void {
   const event = decodeWSEvent(buf);
   // const msg = String.UTF8.decodeUnsafe(ptr, len);
 
-  if (typeof user.onMessage === "function") {
-    user.onMessage(event);
-  }
+  onMessage(event);
+}
+
+export function __onJoin(ptr: usize, len: usize): void {
+  const buf = changetype<ArrayBuffer>(ptr);
+  const event = decodeWSEvent(buf);
+  
+  onJoin(event);
+}
+
+export function __onLeave(ptr: usize, len: usize): void {
+  const buf = changetype<ArrayBuffer>(ptr);
+  const event = decodeWSEvent(buf);
+
+  onLeave(event);
 }
