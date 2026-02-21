@@ -142,7 +142,7 @@ func debugHandler(handlerMap *wasmevents.HandlerMap) any {
 		}
 		info := string(bytes)
 
-		event := getWASMEvent(ctx, wasmevents.LOG, info)
+		event := getWASMEvent(ctx, wasmevents.DEBUG, info)
 		handlerMap.CallHandler(event)
 	}
 }

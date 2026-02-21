@@ -19,7 +19,7 @@ func dummyHandler(event wasmevents.WASMEventInfo) (string, error) {
 }
 
 func debugHandler(event wasmevents.WASMEventInfo) (string, error) {
-	fmt.Printf("DEBUG: %v\n", event.Payload)
+	fmt.Printf("WASM DEBUG: %v\n", event.Payload)
 	return "", nil
 }
 
@@ -42,6 +42,7 @@ func main() {
 			AddHandler(wasmevents.GET, dummyHandler).
 			AddHandler(wasmevents.SET, dummyHandler).
 			AddHandler(wasmevents.BROADCAST, dummyHandler).
+			AddHandler(wasmevents.LOG, dummyHandler).
 			AddHandler(wasmevents.DEBUG, debugHandler),
 	})
 
