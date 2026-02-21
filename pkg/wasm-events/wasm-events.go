@@ -12,6 +12,7 @@ const (
 	SET
 	GET
 	LOG
+	DEBUG
 )
 
 type WASMEventInfo struct {
@@ -38,6 +39,7 @@ var eventStrings = [...]string{
 	"set",
 	"get",
 	"log",
+	"debug",
 }
 
 func (e WASMEventType) String() string {
