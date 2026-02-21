@@ -146,3 +146,24 @@ func debugHandler(handlerMap *wasmevents.HandlerMap) any {
 		handlerMap.CallHandler(event)
 	}
 }
+
+func getUsersHandler(handlerMap *wasmevents.HandlerMap) any {
+	return func(ctx context.Context, mod api.Module) uint32 {
+		mem := mod.Memory()
+		if mem == nil {
+			return 0
+		}
+
+		event := getWASMEvent(ctx, wasmevents.GET_USERS, "")
+		handlerMap.CallHandler(event)
+
+		// TODO: remove dummy data when the system is complete
+		tempUsers := []string{"billy", "bob", "joe"}
+		ptr, _, err := asmscript.WriteArray(mod, tempUsers) // writes array o memory
+		if err != nil {
+			return 0
+		}
+
+		return uint32(ptr)
+	}
+}

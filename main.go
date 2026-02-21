@@ -43,7 +43,8 @@ func main() {
 			AddHandler(wasmevents.SET, dummyHandler).
 			AddHandler(wasmevents.BROADCAST, dummyHandler).
 			AddHandler(wasmevents.LOG, dummyHandler).
-			AddHandler(wasmevents.DEBUG, debugHandler),
+			AddHandler(wasmevents.DEBUG, debugHandler).
+			AddHandler(wasmevents.GET_USERS, dummyHandler),
 	})
 
 	if err != nil {
@@ -62,7 +63,7 @@ func main() {
 		InstanceId:   "first-instance",
 		RoomId:       "first-room",
 		Payload:      "hello, world!",
-		EventType:    wsevents.ON_JOIN,
+		EventType:    wsevents.ON_MESSAGE,
 		Timestamp:    time.Now().UnixMilli(),
 	}
 
