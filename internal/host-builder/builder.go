@@ -46,5 +46,10 @@ func BuildHostModule(runtime wazero.Runtime, handlerMap *wasmevents.HandlerMap) 
 		WithFunc(getUsersHandler(handlerMap)).
 		Export(wasmevents.GET_USERS.String())
 
+	// SEND_MESSAGE
+	hostModuleBuilder.NewFunctionBuilder().
+		WithFunc(sendMessageHandler(handlerMap)).
+		Export(wasmevents.SEND_MESSAGE.String())
+
 	return hostModuleBuilder.Instantiate(context.Background())
 }

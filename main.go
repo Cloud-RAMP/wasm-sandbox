@@ -44,7 +44,8 @@ func main() {
 			AddHandler(wasmevents.BROADCAST, dummyHandler).
 			AddHandler(wasmevents.LOG, dummyHandler).
 			AddHandler(wasmevents.DEBUG, debugHandler).
-			AddHandler(wasmevents.GET_USERS, dummyHandler),
+			AddHandler(wasmevents.GET_USERS, dummyHandler).
+			AddHandler(wasmevents.SEND_MESSAGE, dummyHandler),
 	})
 
 	if err != nil {

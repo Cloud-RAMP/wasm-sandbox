@@ -21,3 +21,7 @@ export declare function _broadcast(ptr: usize, len: usize): void;
 //@ts-ignore
 @external("env", "getUsers")
 export declare function _getUsers(): usize;
+
+//@ts-ignore
+@external("env", "sendMessage")
+export declare function _sendMessage(userPtr: usize, userLen: usize, msgPtr: usize, msgLen: usize): void;

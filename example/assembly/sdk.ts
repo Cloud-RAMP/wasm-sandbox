@@ -43,4 +43,8 @@ class Room {
 
     return users
   }
+
+  sendMessage(recipient: string, message: string): void {
+    env._sendMessage(to_usize(recipient), recipient.length, to_usize(message), message.length, )
+  }
 }

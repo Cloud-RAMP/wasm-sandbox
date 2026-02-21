@@ -149,11 +149,6 @@ func debugHandler(handlerMap *wasmevents.HandlerMap) any {
 
 func getUsersHandler(handlerMap *wasmevents.HandlerMap) any {
 	return func(ctx context.Context, mod api.Module) uint32 {
-		mem := mod.Memory()
-		if mem == nil {
-			return 0
-		}
-
 		event := getWASMEvent(ctx, wasmevents.GET_USERS, "")
 		handlerMap.CallHandler(event)
 
@@ -165,5 +160,29 @@ func getUsersHandler(handlerMap *wasmevents.HandlerMap) any {
 		}
 
 		return uint32(ptr)
+	}
+}
+
+func sendMessageHandler(handlerMap *wasmevents.HandlerMap) any {
+	return func(ctx context.Context, mod api.Module, userPtr uint32, userLen uint32, msgPtr uint32, msgLen uint32) {
+		mem := mod.Memory()
+		if mem == nil {
+			return
+		}
+
+		bytes, ok := mem.Read(userPtr, userLen)
+		if !ok {
+			return
+		}
+		user := string(bytes)
+
+		bytes, ok = mem.Read(msgPtr, msgLen)
+		if !ok {
+			return
+		}
+		msg := string(bytes)
+
+		event := getWASMEvent(ctx, wasmevents.SEND_MESSAGE, user, msg)
+		handlerMap.CallHandler(event)
 	}
 }
