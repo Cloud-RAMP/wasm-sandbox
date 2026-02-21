@@ -14,6 +14,10 @@ declare function _get(keyPtr: usize, keyLen: usize): usize;
 @external("env", "log")
 declare function _log(msgPtr: usize, msgLen: usize): usize;
 
+//@ts-ignore
+@external("env", "debug")
+declare function _debug(msgPtr: usize, msgLen: usize): usize;
+
 export class Context {
   store: Store
   room: Room
@@ -21,6 +25,12 @@ export class Context {
   constructor(){
     this.store = new Store()
     this.room = new Room()
+  }
+
+  static debug(msg: string) {
+      const msgPtr = String.UTF8.encode(msg);
+
+    _debug(changetype<usize>(msgPtr), msg.length);
   }
 
   log(msg: string) {

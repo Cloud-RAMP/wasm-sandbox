@@ -128,3 +128,21 @@ func logHandler(handlerMap *wasmevents.HandlerMap) any {
 		handlerMap.CallHandler(event)
 	}
 }
+
+func debugHandler(handlerMap *wasmevents.HandlerMap) any {
+	return func(ctx context.Context, mod api.Module, strPtr uint32, strLen uint32) {
+		mem := mod.Memory()
+		if mem == nil {
+			return
+		}
+
+		bytes, ok := mem.Read(strPtr, strLen)
+		if !ok {
+			return
+		}
+		info := string(bytes)
+
+		event := getWASMEvent(ctx, wasmevents.LOG, info)
+		handlerMap.CallHandler(event)
+	}
+}

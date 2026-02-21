@@ -18,6 +18,11 @@ func dummyHandler(event wasmevents.WASMEventInfo) (string, error) {
 	return "dummy", nil
 }
 
+func debugHandler(event wasmevents.WASMEventInfo) (string, error) {
+	fmt.Printf("DEBUG: %v\n", event.Payload)
+	return "", nil
+}
+
 // make the main sandbox functions that we expose here
 func main() {
 	ctx := context.Background()
@@ -36,7 +41,8 @@ func main() {
 		HandlerMap: wasmevents.NewHandlerMap().
 			AddHandler(wasmevents.GET, dummyHandler).
 			AddHandler(wasmevents.SET, dummyHandler).
-			AddHandler(wasmevents.BROADCAST, dummyHandler),
+			AddHandler(wasmevents.BROADCAST, dummyHandler).
+			AddHandler(wasmevents.DEBUG, debugHandler),
 	})
 
 	if err != nil {
