@@ -25,3 +25,7 @@ export declare function _getUsers(): usize;
 //@ts-ignore
 @external("env", "sendMessage")
 export declare function _sendMessage(userPtr: usize, userLen: usize, msgPtr: usize, msgLen: usize): void;
+
+//@ts-ignore
+@external("env", "fetch")
+export declare function _fetch(urlPtr: usize, urlLen: usize, methodPtr: usize, methodLen: usize, bodyPtr: usize, bodyLen: usize): usize;

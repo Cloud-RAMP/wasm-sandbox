@@ -15,6 +15,7 @@ const (
 	DEBUG
 	GET_USERS
 	SEND_MESSAGE
+	FETCH
 )
 
 type WASMEventInfo struct {
@@ -44,6 +45,7 @@ var eventStrings = [...]string{
 	"debug",
 	"getUsers",
 	"sendMessage",
+	"fetch",
 }
 
 func (e WASMEventType) String() string {

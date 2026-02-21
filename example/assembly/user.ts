@@ -5,8 +5,8 @@ export function onMessage(event: WSEvent): void {
   const ctx = new Context();
 
   debug("onmessage called");
-  
-  ctx.room.sendMessage("billy", "hello, billy!");
+
+  ctx.fetch("test", "GET", "nothing");
 }
 
 export function onJoin(event: WSEvent): void {

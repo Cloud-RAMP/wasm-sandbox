@@ -17,6 +17,11 @@ export class Context {
   log(msg: string): void {
     env._log(to_usize(msg), msg.length);
   }
+
+  fetch(url: string, method: string, body: string): string {
+    const valPtr = env._fetch(to_usize(url), url.length, to_usize(method), method.length, to_usize(body), body.length);
+    return get_external_string(valPtr);
+  }
 }
 
 class Store {

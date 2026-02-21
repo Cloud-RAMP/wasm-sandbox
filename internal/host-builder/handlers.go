@@ -186,3 +186,38 @@ func sendMessageHandler(handlerMap *wasmevents.HandlerMap) any {
 		handlerMap.CallHandler(event)
 	}
 }
+
+func fetchHandler(handlerMap *wasmevents.HandlerMap) any {
+	return func(ctx context.Context, mod api.Module, urlPtr uint32, urlLen uint32, methodPtr uint32, methodLen uint32, bodyPtr uint32, bodyLen uint32) uint32 {
+		mem := mod.Memory()
+		if mem == nil {
+			return 0
+		}
+
+		bytes, ok := mem.Read(urlPtr, urlLen)
+		if !ok {
+			return 0
+		}
+		url := string(bytes)
+
+		bytes, ok = mem.Read(methodPtr, methodLen)
+		if !ok {
+			return 0
+		}
+		method := string(bytes)
+
+		bytes, ok = mem.Read(bodyPtr, bodyLen)
+		if !ok {
+			return 0
+		}
+		body := string(bytes)
+
+		event := getWASMEvent(ctx, wasmevents.FETCH, url, method, body)
+		handlerMap.CallHandler(event)
+
+		// TODO: remove
+		resp := "bruh"
+		ptr, _, _ := asmscript.CreateASString(mod, resp)
+		return uint32(ptr)
+	}
+}
