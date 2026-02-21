@@ -23,7 +23,7 @@ export class Context {
     this.room = new Room()
   }
 
-  log(msg: string) {
+  log(msg: string): void {
     const msgPtr = String.UTF8.encode(msg);
 
     _log(changetype<usize>(msgPtr), msg.length);

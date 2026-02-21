@@ -2,7 +2,6 @@ package store
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log"
 	"sync"
@@ -134,18 +133,20 @@ func (s *SandboxStore) ExecuteOnModule(ctx context.Context, wsEvent wsevents.WSE
 	switch wsEvent.EventType {
 	case wsevents.ON_MESSAGE:
 		// TODO: Can we develop a better protocol than JSON? JSON parsing is slow.
-		jsonBytes, err := json.Marshal(wsEvent)
-		if err != nil {
-			log.Fatalf("Failed to marshal wsEvent JSON %v", err)
-			return err
-		}
+		// jsonBytes, err := json.Marshal(wsEvent)
+		// if err != nil {
+		// 	log.Fatalf("Failed to marshal wsEvent JSON %v", err)
+		// 	return err
+		// }
 
-		// TODO: add new allocator method so that we don't need to string(bytes) -> bytes
-		ptr, memLen, err := asmscript.CreateASString(active.module, string(jsonBytes))
-		if err != nil {
-			log.Fatalf("Failed to create WASM string %v", err)
-			return err
-		}
+		// // TODO: add new allocator method so that we don't need to string(bytes) -> bytes
+		// ptr, memLen, err := asmscript.CreateASString(active.module, string(jsonBytes))
+		// if err != nil {
+		// 	log.Fatalf("Failed to create WASM string %v", err)
+		// 	return err
+		// }
+
+		ptr, memLen, err := asmscript.WriteWSEvent(active.module, wsEvent)
 
 		// Call the `onMessage` function with the pointer and length
 		onMessage := active.module.ExportedFunction(wsEvent.EventType.String())
