@@ -1,6 +1,17 @@
-import { debug } from "./sdk";
+// AssemblyScript doesn't seem to allow for object interfaces so we need to use a class
 
-// AssemblyScript doesn't seem to allow for interfaces so we need to use a class
+/**
+ * This class defines the information that is passed in wich each WS request.
+ * 
+ * Fields:
+ * * connectionId: the unique identifier of the sending connection
+ * * roomId: the unique identifier of the room in which the message was sent.
+ *     * ! Can be empty if the connection is not a member of any room
+ * * payload: the string of information that the user sent initially.
+ *     * If you want to parse as JSON, consider using an AssemblyScript JSON library
+ * * timestamp
+ *     * the unixmilli timestamp of when the message was received 
+ */
 export class WSEvent {
   connectionId: string = "";
   roomId: string = "";
@@ -9,7 +20,6 @@ export class WSEvent {
 }
 
 export function decodeWSEvent(buf: ArrayBuffer): WSEvent {
-
     const data = Uint8Array.wrap(buf);
     let offset = 0;
 
@@ -37,7 +47,6 @@ export function decodeWSEvent(buf: ArrayBuffer): WSEvent {
         // Read string bytes
         const strBytes = data.subarray(offset, offset + len);
         result[i] = String.UTF8.decodeUnsafe(changetype<usize>(strBytes.buffer) + strBytes.byteOffset, len);
-        debug(result[i]);
         offset += len;
     }
     
@@ -48,4 +57,17 @@ export function decodeWSEvent(buf: ArrayBuffer): WSEvent {
     ret.payload = result[3];
 
     return ret;
+}
+
+export function to_usize(str: string): usize {
+    const ptr = String.UTF8.encode(str);
+    return changetype<usize>(ptr);
+}
+
+export function get_external_string(ptr: u32): string {
+    // assembly script strings have the length stored 4 bytes before the string itself
+    const len = load<i32>(ptr - 4);
+
+    const val = String.UTF16.decodeUnsafe(ptr, len);
+    return val;
 }

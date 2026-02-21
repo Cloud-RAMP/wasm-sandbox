@@ -16,7 +16,7 @@ Our protocol for communicating with WASM is:
   - 4 bytes for an integer describing the string length
   - The string
 */
-func EncodeWSEvent(event wsevents.WSEventInfo) []byte {
+func encodeWSEvent(event wsevents.WSEventInfo) []byte {
 	fields := []string{
 		event.ConnectionId,
 		event.RoomId,
@@ -43,7 +43,7 @@ func EncodeWSEvent(event wsevents.WSEventInfo) []byte {
 }
 
 func WriteWSEvent(module api.Module, event wsevents.WSEventInfo) (uint64, uint64, error) {
-	bytes := EncodeWSEvent(event)
+	bytes := encodeWSEvent(event)
 	ctx := context.Background()
 
 	// Check that the runtime function exists
