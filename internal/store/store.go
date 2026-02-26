@@ -3,12 +3,11 @@ package store
 import (
 	"context"
 	"fmt"
-	"log"
 	"sync"
 	"time"
 
 	"github.com/Cloud-RAMP/wasm-sandbox/internal/asmscript"
-	builder "github.com/Cloud-RAMP/wasm-sandbox/internal/host-builder"
+	"github.com/Cloud-RAMP/wasm-sandbox/internal/loader"
 	wasmevents "github.com/Cloud-RAMP/wasm-sandbox/pkg/wasm-events"
 	wsevents "github.com/Cloud-RAMP/wasm-sandbox/pkg/ws-events"
 	"github.com/tetratelabs/wazero"
@@ -16,25 +15,30 @@ import (
 )
 
 type SandboxStore struct {
-	runtime         wazero.Runtime
-	hostModule      api.Module
-	moduleConfig    wazero.ModuleConfig
-	activeModules   map[string]*ActiveModule
-	maxIdleTime     time.Duration
-	cleanupInterval time.Duration
-	mu              sync.RWMutex // rw mutex might not be entirely necessary
-	handlerMap      wasmevents.HandlerMap
+	runtime          wazero.Runtime
+	hostModule       api.Module
+	moduleConfig     wazero.ModuleConfig
+	activeModules    map[string]*ActiveModule
+	maxActiveModules uint16
+	maxIdleTime      time.Duration
+	cleanupInterval  time.Duration
+	mu               sync.RWMutex // rw mutex might not be entirely necessary
+	handlerMap       wasmevents.HandlerMap
+
+	loadingModulesMu sync.Mutex
+	loadingModules   map[string]chan struct{}
 }
 
 type ActiveModule struct {
 	module     api.Module
 	lastUsed   time.Time
-	wasmBytes  []byte
 	instanceId string
 }
 
 type SandboxStoreCfg struct {
 	MemoryLimitPages   uint32
+	MaxActicveModules  uint16
+	MaxExecutionTime   time.Duration
 	CloseOnContextDone bool
 	MaxIdleTime        time.Duration
 	CleanupInterval    time.Duration
@@ -42,86 +46,22 @@ type SandboxStoreCfg struct {
 	Ctx                context.Context
 }
 
-// Will probably need to pass a ctx into this later, or limit execution time somehow
-func NewSandboxStore(cfg SandboxStoreCfg) (*SandboxStore, error) {
-	ctx := context.Background()
-
-	memPages := cfg.MemoryLimitPages
-	if memPages == 0 {
-		memPages = 10
-	}
-
-	// Create runtime with limits
-	runtime := wazero.NewRuntimeWithConfig(ctx,
-		wazero.NewRuntimeConfig().
-			WithMemoryLimitPages(memPages).
-			WithCloseOnContextDone(cfg.CloseOnContextDone))
-
-	// Build host module once
-	hostModule, err := builder.BuildHostModule(runtime, cfg.HandlerMap)
-	if err != nil {
-		runtime.Close(ctx)
-		return nil, err
-	}
-
-	store := &SandboxStore{
-		runtime:       runtime,
-		hostModule:    hostModule,
-		moduleConfig:  wazero.NewModuleConfig(),
-		activeModules: make(map[string]*ActiveModule),
-	}
-
-	// auto-clean up modules if cleanup interval and max idle time are defined
-	if cfg.CleanupInterval != 0 && cfg.MaxIdleTime != 0 {
-		store.cleanupInterval = cfg.CleanupInterval
-		store.maxIdleTime = cfg.MaxIdleTime
-		store.StartCleanupRoutine()
-	}
-
-	return store, nil
-}
-
-// Loads a given module into the sandbox store
-//
-// Returns an error if instantiation failed
-func (s *SandboxStore) LoadModuleIntoSandbox(moduleId string, wasmBytes []byte) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	// Check if already loaded
-	if _, exists := s.activeModules[moduleId]; exists {
-		return nil
-	}
-
-	// Instantiate the module
-	ctx := context.Background()
-	module, err := s.runtime.Instantiate(ctx, wasmBytes)
-	if err != nil {
-		return fmt.Errorf("failed to instantiate module: %w", err)
-	}
-
-	// Add module to map of active modules
-	s.activeModules[moduleId] = &ActiveModule{
-		module:     module,
-		lastUsed:   time.Now(),
-		wasmBytes:  wasmBytes,
-		instanceId: moduleId,
-	}
-
-	return nil
-}
-
 // Execute a function on a given module
 //
 // The event will be handled by whatever custom event handler the user has set up
 func (s *SandboxStore) ExecuteOnModule(ctx context.Context, wsEvent wsevents.WSEventInfo) error {
-	s.mu.RLock()
-	active, exists := s.activeModules[wsEvent.InstanceId]
-	s.mu.RUnlock()
+	if !wsEvent.EventType.Valid() {
+		return fmt.Errorf("Invalid WS event type")
+	}
 
-	// should be loaded from some external store
-	if !exists {
-		return fmt.Errorf("module %s not loaded", wsEvent.InstanceId)
+	active, err := s.loadModule(wsEvent.InstanceId)
+	if err != nil {
+		fmt.Printf("error loading module: %v\n", err)
+	}
+
+	if active == nil {
+		fmt.Printf("Active is nil after loading")
+		return fmt.Errorf("Active is nil after loading")
 	}
 
 	// create inner context with instanceId key / value
@@ -129,83 +69,83 @@ func (s *SandboxStore) ExecuteOnModule(ctx context.Context, wsEvent wsevents.WSE
 	ctx = context.WithValue(ctx, "connectionId", wsEvent.ConnectionId)
 	ctx = context.WithValue(ctx, "roomId", wsEvent.RoomId)
 
-	if !wsEvent.EventType.Valid() {
-		return fmt.Errorf("Invalid WS event")
-	}
-
+	// write the information of the event in module memory so they can read it
 	ptr, memLen, err := asmscript.WriteWSEvent(active.module, wsEvent)
 
 	// Call the `onMessage` function with the pointer and length
 	onMessage := active.module.ExportedFunction(wsEvent.EventType.String())
 	_, err = onMessage.Call(ctx, ptr, memLen)
 	if err != nil {
-		log.Fatalf("%s failed: %v", wsEvent.EventType.String(), err)
+		fmt.Printf("%s failed: %v\n", wsEvent.EventType.String(), err)
+		return err
 	}
 
 	return nil
 }
 
-// Removes a module from the sandbox store and closes it
-func (s *SandboxStore) RemoveModule(ctx context.Context, moduleId string) error {
-	if ctx == nil {
-		ctx = context.Background()
+// Loads a given module into the sandbox store
+//
+// Returns an error if fetching the module failed
+func (s *SandboxStore) loadModule(moduleId string) (*ActiveModule, error) {
+	s.mu.RLock()
+	active, exists := s.activeModules[moduleId]
+	s.mu.RUnlock()
+
+	if exists {
+		return active, nil
 	}
 
-	s.mu.Lock()
-	module, exists := s.activeModules[moduleId]
-	if !exists {
-		s.mu.Unlock()
-		return nil
-	} else {
-		// remove module from active so that nobody can access it
-		delete(s.activeModules, moduleId)
-	}
-	s.mu.Unlock()
+	s.loadingModulesMu.Lock()
+	signal, exists := s.loadingModules[moduleId]
 
-	return module.module.Close(ctx)
-}
+	// The chan which signifies that this module is being loaded already exists, some other process is doing it
+	if exists {
+		fmt.Printf("Concurrent fetches: waiting on %s\n", moduleId)
+		s.loadingModulesMu.Unlock()
 
-// Close all modules and remove them from the map
+		// wait on the signal
+		// the max waiting time will be 5 seconds because of the time limit on fetching
+		<-signal
 
-func (s *SandboxStore) Close(ctx context.Context) error {
-	if ctx == nil {
-		ctx = context.Background()
+		// if the module was loaded properly, this call will succeed and return the module
+		// if not, it will initiate the loading process itself
+		return s.loadModule(moduleId)
 	}
 
-	s.mu.Lock()
-	defer s.mu.Unlock()
+	s.loadingModules[moduleId] = make(chan struct{})
+	s.loadingModulesMu.Unlock()
 
-	for id, active := range s.activeModules {
-		active.module.Close(ctx)
-		delete(s.activeModules, id)
-	}
+	// signal that we are done loading if the function either returns or fails
+	defer func() {
+		s.loadingModulesMu.Lock()
+		defer s.loadingModulesMu.Unlock()
 
-	// close the host module as well
-	if s.hostModule != nil {
-		s.hostModule.Close(ctx)
-	}
-
-	return s.runtime.Close(ctx)
-}
-
-func (s *SandboxStore) CleanupIdleModules() {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	for id, active := range s.activeModules {
-		if time.Since(active.lastUsed) > s.maxIdleTime {
-			active.module.Close(context.Background())
-			delete(s.activeModules, id)
-			log.Printf("Unloaded idle module: %s", id)
-		}
-	}
-}
-
-func (s *SandboxStore) StartCleanupRoutine() {
-	go func() {
-		ticker := time.NewTicker(s.cleanupInterval)
-		for range ticker.C {
-			s.CleanupIdleModules()
+		if ch, ok := s.loadingModules[moduleId]; ok {
+			close(ch)
+			delete(s.loadingModules, moduleId)
 		}
 	}()
+
+	// Give the loader a 5 second timeout
+	// the cancel function is deferred to avoid "context leaks"
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	module, err := loader.Load(ctx, s.runtime, moduleId)
+	if err != nil {
+		return nil, err
+	}
+
+	mod := &ActiveModule{
+		module:     module,
+		lastUsed:   time.Now(),
+		instanceId: moduleId,
+	}
+
+	// Add module to map of active modules
+	s.mu.Lock()
+	s.activeModules[moduleId] = mod
+	s.mu.Unlock()
+
+	return mod, nil
 }
