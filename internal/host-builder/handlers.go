@@ -215,8 +215,6 @@ func fetchHandler(handlerMap *wasmevents.HandlerMap) any {
 		event := getWASMEvent(ctx, wasmevents.FETCH, url, method, body)
 		handlerMap.CallHandler(event)
 
-		time.Sleep(500 * time.Millisecond)
-
 		// TODO: remove
 		resp := "bruh"
 		ptr, _, _ := asmscript.CreateASString(mod, resp)
