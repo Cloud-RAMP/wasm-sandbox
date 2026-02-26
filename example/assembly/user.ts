@@ -5,6 +5,9 @@ export function onMessage(event: WSEvent): void {
   const ctx = new Context();
 
   debug("User " + event.connectionId + " called onMessage");
+
+  const res = ctx.fetch("helloo", "GET", "hello");
+  debug("fetch response: " + res);
 }
 
 export function onJoin(event: WSEvent): void {

@@ -28,26 +28,28 @@ func (s *SandboxStore) Close(ctx context.Context) error {
 	return s.runtime.Close(ctx)
 }
 
-// Removes a module from the sandbox store and closes it
-func (s *SandboxStore) removeModule(ctx context.Context, moduleId string) error {
-	if ctx == nil {
-		ctx = context.Background()
+// Evict the least recently used module from the cache
+//
+// Assumes that the lock is held before the function runs
+func (s *SandboxStore) evictLRU() {
+	var lru string
+	var oldestTime *time.Time
+	for mod := range s.activeModules {
+		if oldestTime == nil || s.activeModules[mod].lastUsed.Before(*oldestTime) {
+			oldestTime = &s.activeModules[mod].lastUsed
+			lru = mod
+		}
 	}
 
-	s.mu.Lock()
-	module, exists := s.activeModules[moduleId]
-	if !exists {
-		s.mu.Unlock()
-		return nil
-	} else {
-		// remove module from active so that nobody can access it
-		delete(s.activeModules, moduleId)
-	}
-	s.mu.Unlock()
+	// remove module from the map so no new requests can be sent to it
+	mod := s.activeModules[lru]
+	delete(s.activeModules, lru)
 
-	// TODO: Synchronization error.
-	// Add a sync.WG to this runtime so that we can wait for all requests it is processing to finish
-	return module.module.Close(ctx)
+	// detatch a goroutine to wait on the module's requests and then close it
+	go func() {
+		mod.wg.Wait()
+		mod.module.Close(context.Background())
+	}()
 }
 
 func (s *SandboxStore) cleanupIdleModules() {
@@ -56,8 +58,9 @@ func (s *SandboxStore) cleanupIdleModules() {
 
 	for id, active := range s.activeModules {
 		if time.Since(active.lastUsed) > s.maxIdleTime {
-			active.module.Close(context.Background())
 			delete(s.activeModules, id)
+			active.wg.Wait()
+			active.module.Close(context.Background())
 			log.Printf("Unloaded idle module: %s", id)
 		}
 	}
