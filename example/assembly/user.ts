@@ -16,3 +16,7 @@ export function onJoin(event: WSEvent): void {
 export function onLeave(event: WSEvent): void {
   debug("onLeave called!");
 }
+
+export function onError(event: WSEvent): void {
+  debug("onError called!");
+}

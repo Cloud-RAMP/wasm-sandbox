@@ -6,6 +6,7 @@ const (
 	ON_MESSAGE WSEventType = iota
 	ON_JOIN
 	ON_LEAVE
+	ON_ERROR
 )
 
 // These are the function names that will be defined within our AssemblyScript SDK
@@ -13,6 +14,7 @@ var exportedWSEvents = [...]string{
 	"__onMessage",
 	"__onJoin",
 	"__onLeave",
+	"__onError",
 }
 
 func (e WSEventType) String() string {
