@@ -100,6 +100,7 @@ func (s *SandboxStore) loadModule(moduleId string) (*ActiveModule, error) {
 
 	// The chan which signifies that this module is being loaded already exists, some other process is doing it
 	if exists {
+		fmt.Printf("Concurrent fetches: waiting on %s\n", moduleId)
 		s.loadingModulesMu.Unlock()
 
 		// wait on the signal
@@ -119,8 +120,10 @@ func (s *SandboxStore) loadModule(moduleId string) (*ActiveModule, error) {
 		s.loadingModulesMu.Lock()
 		defer s.loadingModulesMu.Unlock()
 
-		close(s.loadingModules[moduleId])
-		delete(s.loadingModules, moduleId)
+		if ch, ok := s.loadingModules[moduleId]; ok {
+			close(ch)
+			delete(s.loadingModules, moduleId)
+		}
 	}()
 
 	// Give the loader a 5 second timeout
@@ -133,15 +136,16 @@ func (s *SandboxStore) loadModule(moduleId string) (*ActiveModule, error) {
 		return nil, err
 	}
 
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	// Add module to map of active modules
-	s.activeModules[moduleId] = &ActiveModule{
+	mod := &ActiveModule{
 		module:     module,
 		lastUsed:   time.Now(),
 		instanceId: moduleId,
 	}
 
-	return s.activeModules[moduleId], nil
+	// Add module to map of active modules
+	s.mu.Lock()
+	s.activeModules[moduleId] = mod
+	s.mu.Unlock()
+
+	return mod, nil
 }

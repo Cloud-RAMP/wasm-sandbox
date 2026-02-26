@@ -4,9 +4,7 @@ import { WSEvent } from "./protocol";
 export function onMessage(event: WSEvent): void {
   const ctx = new Context();
 
-  debug("onmessage called");
-
-  ctx.fetch("test", "GET", "nothing");
+  debug("User " + event.connectionId + " called onMessage");
 }
 
 export function onJoin(event: WSEvent): void {

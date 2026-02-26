@@ -22,6 +22,8 @@ func Load(ctx context.Context, runtime wazero.Runtime, moduleId string) (api.Mod
 		return nil, fmt.Errorf("Loader function is not defined!")
 	}
 
+	fmt.Printf("Loading module %s from external store\n", moduleId)
+
 	bytes, err := loader(ctx, moduleId)
 	if err != nil {
 		return nil, err
