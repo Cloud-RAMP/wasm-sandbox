@@ -58,16 +58,16 @@ func main() {
 
 	go store.ExecuteOnModule(ctx, event)
 
-	// second event to introduce concurrency issues
-	event = wsevents.WSEventInfo{
-		ConnectionId: "second-connection",
-		InstanceId:   "example/build/release.wasm",
-		RoomId:       "first-room",
-		Payload:      "hello, world!",
-		EventType:    wsevents.ON_MESSAGE,
-		Timestamp:    time.Now().UnixMilli(),
-	}
-	go store.ExecuteOnModule(ctx, event)
+	// // second event to introduce concurrency issues
+	// event = wsevents.WSEventInfo{
+	// 	ConnectionId: "second-connection",
+	// 	InstanceId:   "example/build/release.wasm",
+	// 	RoomId:       "first-room",
+	// 	Payload:      "hello, world!",
+	// 	EventType:    wsevents.ON_MESSAGE,
+	// 	Timestamp:    time.Now().UnixMilli(),
+	// }
+	// go store.ExecuteOnModule(ctx, event)
 
 	// sleep so that all events can be read
 	// won't need this in the server, as it will be a long running process

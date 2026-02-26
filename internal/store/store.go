@@ -22,6 +22,7 @@ type SandboxStore struct {
 	maxActiveModules uint16
 	maxIdleTime      time.Duration
 	cleanupInterval  time.Duration
+	maxExecutionTime time.Duration
 	mu               sync.RWMutex // rw mutex might not be entirely necessary
 	handlerMap       wasmevents.HandlerMap
 
@@ -33,11 +34,12 @@ type ActiveModule struct {
 	module     api.Module
 	lastUsed   time.Time
 	instanceId string
+	wg         sync.WaitGroup
 }
 
 type SandboxStoreCfg struct {
 	MemoryLimitPages   uint32
-	MaxActicveModules  uint16
+	MaxActiveModules   uint16
 	MaxExecutionTime   time.Duration
 	CloseOnContextDone bool
 	MaxIdleTime        time.Duration
@@ -72,7 +74,16 @@ func (s *SandboxStore) ExecuteOnModule(ctx context.Context, wsEvent wsevents.WSE
 	// write the information of the event in module memory so they can read it
 	ptr, memLen, err := asmscript.WriteWSEvent(active.module, wsEvent)
 
-	// Call the `onMessage` function with the pointer and length
+	// Add timeout (defaults to 5 seconds)
+	ctx, cancel := context.WithTimeout(ctx, s.maxExecutionTime)
+	defer cancel()
+
+	// this represents the number of current requests being processed
+	// the Done() method removes 1 from the waitgroup. necessary for concurrency
+	active.wg.Add(1)
+	defer active.wg.Done()
+
+	// This call is blocking, so we can ensure that once it returns we are complete
 	onMessage := active.module.ExportedFunction(wsEvent.EventType.String())
 	_, err = onMessage.Call(ctx, ptr, memLen)
 	if err != nil {
@@ -143,7 +154,11 @@ func (s *SandboxStore) loadModule(moduleId string) (*ActiveModule, error) {
 	}
 
 	// Add module to map of active modules
+	// remove least recently used if we hit the limit
 	s.mu.Lock()
+	if len(s.activeModules) >= int(s.maxActiveModules) {
+		s.evictLRU()
+	}
 	s.activeModules[moduleId] = mod
 	s.mu.Unlock()
 
