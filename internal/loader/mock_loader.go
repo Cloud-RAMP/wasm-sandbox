@@ -1,6 +1,7 @@
 package loader
 
 import (
+	"context"
 	"fmt"
 	"os"
 )
@@ -10,7 +11,7 @@ func init() {
 }
 
 // To be used in testing
-func MockLoaderFunction(moduleId string) ([]byte, error) {
+func MockLoaderFunction(ctx context.Context, moduleId string) ([]byte, error) {
 	wasmBytes, err := os.ReadFile(moduleId)
 	if err != nil {
 		fmt.Println("Failed to read wasm file", err)

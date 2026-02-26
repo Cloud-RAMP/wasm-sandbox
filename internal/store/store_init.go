@@ -40,6 +40,7 @@ func NewSandboxStore(cfg SandboxStoreCfg) (*SandboxStore, error) {
 		hostModule:       hostModule,
 		moduleConfig:     wazero.NewModuleConfig(),
 		activeModules:    make(map[string]*ActiveModule),
+		loadingModules:   make(map[string]chan struct{}),
 		maxActiveModules: maxActiveModules,
 	}
 

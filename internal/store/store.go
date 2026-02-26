@@ -24,6 +24,9 @@ type SandboxStore struct {
 	cleanupInterval  time.Duration
 	mu               sync.RWMutex // rw mutex might not be entirely necessary
 	handlerMap       wasmevents.HandlerMap
+
+	loadingModulesMu sync.Mutex
+	loadingModules   map[string]chan struct{}
 }
 
 type ActiveModule struct {
@@ -51,23 +54,9 @@ func (s *SandboxStore) ExecuteOnModule(ctx context.Context, wsEvent wsevents.WSE
 		return fmt.Errorf("Invalid WS event type")
 	}
 
-	var active *ActiveModule
-	s.mu.RLock()
-	active, exists := s.activeModules[wsEvent.InstanceId]
-	s.mu.RUnlock()
-
-	// should be loaded from some external store
-	if !exists {
-		fmt.Println("Module does not exist, loading", wsEvent.InstanceId)
-
-		// this var is done so that we don't use the := to make a local variable
-		// so outer "active" can be assigned to return of LoadModule
-		var err error
-		active, err = s.loadModule(wsEvent.InstanceId)
-		if err != nil {
-			fmt.Println("Module loading failed!")
-			return err
-		}
+	active, err := s.loadModule(wsEvent.InstanceId)
+	if err != nil {
+		fmt.Printf("error loading module: %v\n", err)
 	}
 
 	if active == nil {
@@ -98,7 +87,48 @@ func (s *SandboxStore) ExecuteOnModule(ctx context.Context, wsEvent wsevents.WSE
 //
 // Returns an error if fetching the module failed
 func (s *SandboxStore) loadModule(moduleId string) (*ActiveModule, error) {
-	module, err := loader.Load(context.Background(), s.runtime, moduleId)
+	s.mu.RLock()
+	active, exists := s.activeModules[moduleId]
+	s.mu.RUnlock()
+
+	if exists {
+		return active, nil
+	}
+
+	s.loadingModulesMu.Lock()
+	signal, exists := s.loadingModules[moduleId]
+
+	// The chan which signifies that this module is being loaded already exists, some other process is doing it
+	if exists {
+		s.loadingModulesMu.Unlock()
+
+		// wait on the signal
+		// the max waiting time will be 5 seconds because of the time limit on fetching
+		<-signal
+
+		// if the module was loaded properly, this call will succeed and return the module
+		// if not, it will initiate the loading process itself
+		return s.loadModule(moduleId)
+	}
+
+	s.loadingModules[moduleId] = make(chan struct{})
+	s.loadingModulesMu.Unlock()
+
+	// signal that we are done loading if the function either returns or fails
+	defer func() {
+		s.loadingModulesMu.Lock()
+		defer s.loadingModulesMu.Unlock()
+
+		close(s.loadingModules[moduleId])
+		delete(s.loadingModules, moduleId)
+	}()
+
+	// Give the loader a 5 second timeout
+	// the cancel function is deferred to avoid "context leaks"
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	module, err := loader.Load(ctx, s.runtime, moduleId)
 	if err != nil {
 		return nil, err
 	}

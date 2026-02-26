@@ -8,13 +8,11 @@ import (
 	"github.com/tetratelabs/wazero/api"
 )
 
-// What we need to do here is expose a "Load module" function, where we basically just give it an instanceID and it fetches it from some external data store.
-// To make the systems less tightly coupled, we could define a handler function the user can specify
-
-type LoaderFunction func(string) ([]byte, error)
+type LoaderFunction func(context.Context, string) ([]byte, error)
 
 var loader LoaderFunction = nil
 
+// Hook to be called on project initialization by the developer who accesses this
 func SetLoaderFunction(function LoaderFunction) {
 	loader = function
 }
@@ -24,7 +22,7 @@ func Load(ctx context.Context, runtime wazero.Runtime, moduleId string) (api.Mod
 		return nil, fmt.Errorf("Loader function is not defined!")
 	}
 
-	bytes, err := loader(moduleId)
+	bytes, err := loader(ctx, moduleId)
 	if err != nil {
 		return nil, err
 	}
