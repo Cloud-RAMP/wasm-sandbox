@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"os"
 	"time"
 
 	"github.com/Cloud-RAMP/wasm-sandbox/internal/store"
@@ -27,12 +26,6 @@ func debugHandler(event wasmevents.WASMEventInfo) (string, error) {
 func main() {
 	ctx := context.Background()
 
-	wasmBytes, err := os.ReadFile("./example/build/release.wasm")
-	if err != nil {
-		fmt.Println("Failed to read wasm file", err)
-		return
-	}
-
 	store, err := store.NewSandboxStore(store.SandboxStoreCfg{
 		CleanupInterval:    5 * time.Second,
 		MaxIdleTime:        6 * time.Second,
@@ -53,15 +46,10 @@ func main() {
 		return
 	}
 
-	if err := store.LoadModuleIntoSandbox("first-instance", wasmBytes); err != nil {
-		fmt.Println("Failed to load module", err)
-		return
-	}
-
 	// sample event
 	event := wsevents.WSEventInfo{
 		ConnectionId: "first-connection",
-		InstanceId:   "first-instance",
+		InstanceId:   "example/build/release.wasm", // simple loader function is only configued to use filenames as instance IDs
 		RoomId:       "first-room",
 		Payload:      "hello, world!",
 		EventType:    wsevents.ON_MESSAGE,
