@@ -13,6 +13,9 @@ const (
 	GET
 	LOG
 	DEBUG
+	GET_USERS
+	SEND_MESSAGE
+	FETCH
 )
 
 type WASMEventInfo struct {
@@ -40,6 +43,9 @@ var eventStrings = [...]string{
 	"get",
 	"log",
 	"debug",
+	"getUsers",
+	"sendMessage",
+	"fetch",
 }
 
 func (e WASMEventType) String() string {

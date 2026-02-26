@@ -146,3 +146,78 @@ func debugHandler(handlerMap *wasmevents.HandlerMap) any {
 		handlerMap.CallHandler(event)
 	}
 }
+
+func getUsersHandler(handlerMap *wasmevents.HandlerMap) any {
+	return func(ctx context.Context, mod api.Module) uint32 {
+		event := getWASMEvent(ctx, wasmevents.GET_USERS, "")
+		handlerMap.CallHandler(event)
+
+		// TODO: remove dummy data when the system is complete
+		tempUsers := []string{"billy", "bob", "joe"}
+		ptr, _, err := asmscript.WriteArray(mod, tempUsers) // writes array o memory
+		if err != nil {
+			return 0
+		}
+
+		return uint32(ptr)
+	}
+}
+
+func sendMessageHandler(handlerMap *wasmevents.HandlerMap) any {
+	return func(ctx context.Context, mod api.Module, userPtr uint32, userLen uint32, msgPtr uint32, msgLen uint32) {
+		mem := mod.Memory()
+		if mem == nil {
+			return
+		}
+
+		bytes, ok := mem.Read(userPtr, userLen)
+		if !ok {
+			return
+		}
+		user := string(bytes)
+
+		bytes, ok = mem.Read(msgPtr, msgLen)
+		if !ok {
+			return
+		}
+		msg := string(bytes)
+
+		event := getWASMEvent(ctx, wasmevents.SEND_MESSAGE, user, msg)
+		handlerMap.CallHandler(event)
+	}
+}
+
+func fetchHandler(handlerMap *wasmevents.HandlerMap) any {
+	return func(ctx context.Context, mod api.Module, urlPtr uint32, urlLen uint32, methodPtr uint32, methodLen uint32, bodyPtr uint32, bodyLen uint32) uint32 {
+		mem := mod.Memory()
+		if mem == nil {
+			return 0
+		}
+
+		bytes, ok := mem.Read(urlPtr, urlLen)
+		if !ok {
+			return 0
+		}
+		url := string(bytes)
+
+		bytes, ok = mem.Read(methodPtr, methodLen)
+		if !ok {
+			return 0
+		}
+		method := string(bytes)
+
+		bytes, ok = mem.Read(bodyPtr, bodyLen)
+		if !ok {
+			return 0
+		}
+		body := string(bytes)
+
+		event := getWASMEvent(ctx, wasmevents.FETCH, url, method, body)
+		handlerMap.CallHandler(event)
+
+		// TODO: remove
+		resp := "bruh"
+		ptr, _, _ := asmscript.CreateASString(mod, resp)
+		return uint32(ptr)
+	}
+}

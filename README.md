@@ -44,6 +44,6 @@ These are APIs that we should provide to the programmer writing the code.
 ### Working on
 
 * AssemblyScript SDK (could publish as a node module)
+  * How to have users write code that we can easily package and compile to WASM (probably dependent on publishing the SDK)
 * How to uniquely identify users
     * This will likely be done at the WebSocket server level, we will simply need to use that information to operate (make it a function parameter)
-* How to have users write code that we can easily package and compile to WASM

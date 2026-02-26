@@ -19,7 +19,7 @@ export class WSEvent {
   timestamp: number = 0;
 }
 
-export function decodeWSEvent(buf: ArrayBuffer): WSEvent {
+export function decodeGoArray(buf: ArrayBuffer): string[] {
     const data = Uint8Array.wrap(buf);
     let offset = 0;
 
@@ -49,12 +49,18 @@ export function decodeWSEvent(buf: ArrayBuffer): WSEvent {
         result[i] = String.UTF8.decodeUnsafe(changetype<usize>(strBytes.buffer) + strBytes.byteOffset, len);
         offset += len;
     }
+
+    return result;
+}
+
+export function decodeWSEvent(buf: ArrayBuffer): WSEvent {
+    const data = decodeGoArray(buf);
     
     const ret: WSEvent = new WSEvent();
-    ret.connectionId = result[0];
-    ret.roomId = result[1];
-    ret.timestamp = parseInt(result[2]);
-    ret.payload = result[3];
+    ret.connectionId = data[0];
+    ret.roomId = data[1];
+    ret.timestamp = parseInt(data[2]);
+    ret.payload = data[3];
 
     return ret;
 }
