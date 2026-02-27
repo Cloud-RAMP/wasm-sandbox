@@ -1,5 +1,7 @@
 // AssemblyScript doesn't seem to allow for object interfaces so we need to use a class
 
+import { debug } from "./sdk";
+
 /**
  * This class defines the information that is passed in wich each WS request.
  * 
@@ -19,9 +21,29 @@ export class WSEvent {
   timestamp: number = 0;
 }
 
-export function decodeGoArray(buf: ArrayBuffer): string[] {
+export class Result<T> {
+    data: T;
+    error: string | null = null;
+
+    constructor(data: T, error: string | null = null) {
+        this.data = data;
+        this.error = error;
+    }
+}
+
+export function decodeGoArray(buf: ArrayBuffer): Result<string[]> {
     const data = Uint8Array.wrap(buf);
     let offset = 0;
+
+    const indicator = data[0];
+    if (indicator !== 43) { // + is 43 in ascii
+        debug("array is an error!");
+
+        // figure out how to get the error text in here
+        return new Result([], "some error message");
+    }
+
+    offset += 2;
 
     // Read the number of strings (4 bytes, little endian)
     const count = (
@@ -48,19 +70,24 @@ export function decodeGoArray(buf: ArrayBuffer): string[] {
         const strBytes = data.subarray(offset, offset + len);
         result[i] = String.UTF8.decodeUnsafe(changetype<usize>(strBytes.buffer) + strBytes.byteOffset, len);
         offset += len;
+        debug(result[i]);
     }
 
-    return result;
+    return new Result(result);
 }
 
 export function decodeWSEvent(buf: ArrayBuffer): WSEvent {
     const data = decodeGoArray(buf);
+    if (data.error != null) {
+        return new WSEvent();
+    }
     
+    const strArray = data.data;
     const ret: WSEvent = new WSEvent();
-    ret.connectionId = data[0];
-    ret.roomId = data[1];
-    ret.timestamp = parseInt(data[2]);
-    ret.payload = data[3];
+    ret.connectionId = strArray[0];
+    ret.roomId = strArray[1];
+    ret.timestamp = parseInt(strArray[2]);
+    ret.payload = strArray[3];
 
     return ret;
 }
@@ -70,10 +97,18 @@ export function to_usize(str: string): usize {
     return changetype<usize>(ptr);
 }
 
-export function get_external_string(ptr: u32): string {
+export function get_external_string(ptr: u32): Result<string> {
     // assembly script strings have the length stored 4 bytes before the string itself
     const len = load<i32>(ptr - 4);
 
-    const val = String.UTF16.decodeUnsafe(ptr, len);
-    return val;
+    const indicator = load<u8>(ptr);
+    if (indicator != 43) { // 43 is ascii '+'
+        debug("error!");
+        const errorMsg = String.UTF16.decodeUnsafe(ptr + 2, len - 2);
+        
+        return new Result("", errorMsg);
+    }
+
+    const val = String.UTF16.decodeUnsafe(ptr + 2, len - 2);
+    return new Result(val);
 }

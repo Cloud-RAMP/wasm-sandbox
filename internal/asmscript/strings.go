@@ -29,10 +29,20 @@ func ReadASString(mem api.Memory, ptr uint32) string {
 	return decodeUTF16LE(data)
 }
 
-// Create an AssemblyScript string in the given module's memory
-//
-// Returns the string location, string length, and possible error
+// A message string with + denotes a successful string
 func CreateASString(module api.Module, str string) (uint64, uint64, error) {
+	return createStringInternal(module, str, '+')
+}
+
+// A message starting with - denotes an error
+func CreateASError(module api.Module, err error) (uint64, uint64, error) {
+	return createStringInternal(module, err.Error(), '-')
+}
+
+// Create a string in the given module's memory
+//
+// Return string location, string length, and possible error
+func createStringInternal(module api.Module, str string, indicator rune) (uint64, uint64, error) {
 	ctx := context.Background()
 
 	// Check that the runtime function exists
@@ -43,6 +53,7 @@ func CreateASString(module api.Module, str string) (uint64, uint64, error) {
 
 	// Convert to UTF-16 Little Endian
 	utf16Data := encodeUTF16LE(str)
+	utf16Data = append([]byte{byte(indicator), 0}, utf16Data...)
 	totalSize := uint64(len(utf16Data))
 
 	// Allocate memory with __new(size, id)

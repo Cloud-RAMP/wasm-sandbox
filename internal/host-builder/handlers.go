@@ -216,8 +216,9 @@ func fetchHandler(handlerMap *wasmevents.HandlerMap) any {
 		handlerMap.CallHandler(event)
 
 		// TODO: remove
-		resp := "bruh"
-		ptr, _, _ := asmscript.CreateASString(mod, resp)
+		// resp := "bruh"
+		// ptr, _, _ := asmscript.CreateASString(mod, resp)
+		ptr, _, _ := asmscript.CreateASError(mod, fmt.Errorf("testing error"))
 		return uint32(ptr)
 	}
 }

@@ -13,23 +13,24 @@ import (
 Our protocol for communicating with WASM is:
 * Fist we will have 4 bytes representing the number of strings passed in
 * Each string item will be laid out as the following
+  - 2 bytes for a +/- describing success / failure
+  - asmscript strings are 2 byte aligned
   - 4 bytes for an integer describing the string length
   - The string
 */
 func encodeArray(arr []string) []byte {
 	count := uint32(len(arr))
-	buf := make([]byte, 0, 4+count*8) // initial cap, will grow as needed
+	buf := make([]byte, 0, 5+count*8) // initial cap, will grow as needed
 
-	// Write the number of strings (4 bytes, little endian)
-	tmp := make([]byte, 4)
-	binary.LittleEndian.PutUint32(tmp, count)
-	buf = append(buf, tmp...)
+	// success indicator
+	buf = append(buf, '+', 0)
+
+	// number of strings
+	buf = binary.LittleEndian.AppendUint32(buf, count)
 
 	for _, s := range arr {
-		strBytes := []byte(s)
-		binary.LittleEndian.PutUint32(tmp, uint32(len(strBytes)))
-		buf = append(buf, tmp...)
-		buf = append(buf, strBytes...)
+		buf = binary.LittleEndian.AppendUint32(buf, uint32(len(s)))
+		buf = append(buf, s...)
 	}
 
 	return buf

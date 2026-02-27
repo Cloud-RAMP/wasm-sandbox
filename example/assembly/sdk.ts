@@ -1,4 +1,4 @@
-import { decodeGoArray, get_external_string, to_usize } from "./protocol";
+import { decodeGoArray, get_external_string, to_usize, Result } from "./protocol";
 import * as env from "./env";
 
 export function debug(msg: string): void {
@@ -18,7 +18,7 @@ export class Context {
     env._log(to_usize(msg), msg.length);
   }
 
-  fetch(url: string, method: string, body: string): string {
+  fetch(url: string, method: string, body: string): Result<string> {
     const valPtr = env._fetch(to_usize(url), url.length, to_usize(method), method.length, to_usize(body), body.length);
     return get_external_string(valPtr);
   }
@@ -29,7 +29,7 @@ class Store {
     env._set(to_usize(key), key.length, to_usize(value), value.length)
   }
 
-  get(key: string): string {    
+  get(key: string): Result<string> {    
     const valPtr = env._get(to_usize(key), key.length);
     return get_external_string(valPtr);
   }
@@ -40,7 +40,7 @@ class Room {
     env._broadcast(to_usize(msg), msg.length);
   }
 
-  getUsers(): string[] {
+  getUsers(): Result<string[]> {
     const ptr = env._getUsers();
 
     const buf = changetype<ArrayBuffer>(ptr);
