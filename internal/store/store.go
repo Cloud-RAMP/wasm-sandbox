@@ -15,26 +15,45 @@ import (
 )
 
 type SandboxStore struct {
-	runtime          wazero.Runtime
-	hostModule       api.Module
-	moduleConfig     wazero.ModuleConfig
+	// The runtime is where modules are executed, but thier states are kept separete
+	runtime wazero.Runtime
+
+	// The host module is where we define go functions to be accessed within the WASM module.
+	// See the hostbuilder module for more
+	hostModule   api.Module
+	moduleConfig wazero.ModuleConfig
+
+	// A map between moduleId and the actual WASM modules
+	// This could be refactored into its own type
 	activeModules    map[string]*ActiveModule
 	maxActiveModules uint16
 	maxIdleTime      time.Duration
 	cleanupInterval  time.Duration
 	maxExecutionTime time.Duration
 	mu               sync.RWMutex // rw mutex might not be entirely necessary
-	handlerMap       wasmevents.HandlerMap
 
-	loadingModulesMu sync.Mutex
+	// Map that the user of this package will need to instantiate.
+	// It allows us to designate functions to run on every event, and will likely be used
+	// for things like external data store fetching.
+	handlerMap wasmevents.HandlerMap
+
+	// loadingModules defines a set of chans which will be present when a module is actively being loaded.
+	// This is done to prevent concurrent fetches of the same module
 	loadingModules   map[string]chan struct{}
+	loadingModulesMu sync.Mutex
 }
 
 type ActiveModule struct {
+	// The actual WASM bytes being executed
 	module     api.Module
 	lastUsed   time.Time
 	instanceId string
-	wg         sync.WaitGroup
+
+	// A "wait group" is like a thread barrier. If you call wg.Wait(), it will wait until
+	// all threads that have incremented the counter are finished
+	//
+	// This is done so that we can wait for all requests to finish processing before shutting down the module
+	wg sync.WaitGroup
 }
 
 type SandboxStoreCfg struct {
