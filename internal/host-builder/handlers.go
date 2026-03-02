@@ -153,8 +153,13 @@ func getUsersHandler(handlerMap *wasmevents.HandlerMap) any {
 		handlerMap.CallHandler(event)
 
 		// TODO: remove dummy data when the system is complete
-		tempUsers := []string{"billy", "bob", "joe"}
-		ptr, _, err := asmscript.WriteArray(mod, tempUsers) // writes array o memory
+		// tempUsers := []string{"billy", "bob", "joe"}
+		// ptr, _, err := asmscript.WriteArray(mod, tempUsers) // writes array o memory
+		// if err != nil {
+		// 	return 0
+		// }
+
+		ptr, _, err := asmscript.CreateASError(mod, fmt.Errorf("testing error"))
 		if err != nil {
 			return 0
 		}
@@ -218,6 +223,7 @@ func fetchHandler(handlerMap *wasmevents.HandlerMap) any {
 		// TODO: remove
 		resp := "bruh"
 		ptr, _, _ := asmscript.CreateASString(mod, resp)
+		// ptr, _, _ := asmscript.CreateASError(mod, fmt.Errorf("testing error"))
 		return uint32(ptr)
 	}
 }
