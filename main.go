@@ -11,9 +11,9 @@ import (
 )
 
 func dummyHandler(event wasmevents.WASMEventInfo) (string, error) {
-	fmt.Println("New event")
-	fmt.Printf("Event %s from %s\n", event.EventType.String(), event.InstanceId)
-	fmt.Println("Args:", event.Payload)
+	// fmt.Println("New event")
+	// fmt.Printf("Event %s from %s\n", event.EventType.String(), event.InstanceId)
+	// fmt.Println("Args:", event.Payload)
 	return "dummy", nil
 }
 
@@ -58,16 +58,29 @@ func main() {
 
 	go store.ExecuteOnModule(ctx, event)
 
-	// // second event to introduce concurrency issues
-	// event = wsevents.WSEventInfo{
-	// 	ConnectionId: "second-connection",
-	// 	InstanceId:   "example/build/release.wasm",
-	// 	RoomId:       "first-room",
-	// 	Payload:      "hello, world!",
-	// 	EventType:    wsevents.ON_MESSAGE,
-	// 	Timestamp:    time.Now().UnixMilli(),
-	// }
-	// go store.ExecuteOnModule(ctx, event)
+	// second event to introduce concurrency issues
+	event = wsevents.WSEventInfo{
+		ConnectionId: "second-connection",
+		InstanceId:   "example/build/release.wasm",
+		RoomId:       "first-room",
+		Payload:      "hello, world!",
+		EventType:    wsevents.ON_MESSAGE,
+		Timestamp:    time.Now().UnixMilli(),
+	}
+	go store.ExecuteOnModule(ctx, event)
+
+	// second event to introduce concurrency issues
+	event = wsevents.WSEventInfo{
+		ConnectionId: "third-connection",
+		InstanceId:   "example/build/release.wasm",
+		RoomId:       "first-room",
+		Payload:      "hello, world!",
+		EventType:    wsevents.ON_MESSAGE,
+		Timestamp:    time.Now().UnixMilli(),
+	}
+	go store.ExecuteOnModule(ctx, event)
+
+	fmt.Println("Finished sending requests")
 
 	// sleep so that all events can be read
 	// won't need this in the server, as it will be a long running process

@@ -29,6 +29,10 @@ export class Result<T> {
         this.data = data;
         this.error = error;
     }
+
+    isError(): bool {
+        return this.error !== "";
+    }
 }
 
 export function decodeStringArray(buf: ArrayBuffer): Result<string[]> {
@@ -74,7 +78,6 @@ export function decodeStringArray(buf: ArrayBuffer): Result<string[]> {
         const strBytes = data.subarray(offset, offset + len);
         result[i] = String.UTF8.decodeUnsafe(changetype<usize>(strBytes.buffer) + strBytes.byteOffset, len);
         offset += len;
-        debug(result[i]);
     }
 
     return new Result(result);
@@ -82,7 +85,7 @@ export function decodeStringArray(buf: ArrayBuffer): Result<string[]> {
 
 export function decodeWSEvent(buf: ArrayBuffer): WSEvent {
     const data = decodeStringArray(buf);
-    if (data.error != null) {
+    if (data.isError()) {
         return new WSEvent();
     }
     
