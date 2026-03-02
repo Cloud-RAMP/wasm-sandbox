@@ -1,4 +1,4 @@
-import { decodeGoArray, get_external_string, to_usize, Result } from "./protocol";
+import { decodeStringArray, get_external_string, to_usize, Result } from "./protocol";
 import * as env from "./env";
 
 export function debug(msg: string): void {
@@ -44,7 +44,7 @@ class Room {
     const ptr = env._getUsers();
 
     const buf = changetype<ArrayBuffer>(ptr);
-    const users = decodeGoArray(buf);
+    const users = decodeStringArray(buf);
 
     return users
   }

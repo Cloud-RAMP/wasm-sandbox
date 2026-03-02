@@ -23,24 +23,28 @@ export class WSEvent {
 
 export class Result<T> {
     data: T;
-    error: string | null = null;
+    error: string;
 
-    constructor(data: T, error: string | null = null) {
+    constructor(data: T, error: string = "") {
         this.data = data;
         this.error = error;
     }
 }
 
-export function decodeGoArray(buf: ArrayBuffer): Result<string[]> {
+export function decodeStringArray(buf: ArrayBuffer): Result<string[]> {
     const data = Uint8Array.wrap(buf);
     let offset = 0;
 
     const indicator = data[0];
     if (indicator !== 43) { // + is 43 in ascii
-        debug("array is an error!");
+        // Since the indicator is an error, we know the data was passed in as a regular string
+        // Length is stored at addr - 4
+        const addr = changetype<usize>(buf);
+        const len = load<i32>(addr - 4);
+        const errMsg = String.UTF16.decodeUnsafe(addr + 2, len - 2);
 
         // figure out how to get the error text in here
-        return new Result([], "some error message");
+        return new Result([], errMsg);
     }
 
     offset += 2;
@@ -77,7 +81,7 @@ export function decodeGoArray(buf: ArrayBuffer): Result<string[]> {
 }
 
 export function decodeWSEvent(buf: ArrayBuffer): WSEvent {
-    const data = decodeGoArray(buf);
+    const data = decodeStringArray(buf);
     if (data.error != null) {
         return new WSEvent();
     }
@@ -103,7 +107,6 @@ export function get_external_string(ptr: u32): Result<string> {
 
     const indicator = load<u8>(ptr);
     if (indicator != 43) { // 43 is ascii '+'
-        debug("error!");
         const errorMsg = String.UTF16.decodeUnsafe(ptr + 2, len - 2);
         
         return new Result("", errorMsg);
