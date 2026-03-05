@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/Cloud-RAMP/wasm-sandbox/internal/logging"
-	"github.com/Cloud-RAMP/wasm-sandbox/internal/modulelocks"
+	modulelocks "github.com/Cloud-RAMP/wasm-sandbox/internal/module-locks"
 )
 
 // Close all modules and remove them from the map

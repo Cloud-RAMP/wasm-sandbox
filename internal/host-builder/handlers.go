@@ -7,7 +7,7 @@ import (
 
 	"github.com/Cloud-RAMP/wasm-sandbox/internal/asmscript"
 	"github.com/Cloud-RAMP/wasm-sandbox/internal/logging"
-	"github.com/Cloud-RAMP/wasm-sandbox/internal/modulelocks"
+	modulelocks "github.com/Cloud-RAMP/wasm-sandbox/internal/module-locks"
 	wasmevents "github.com/Cloud-RAMP/wasm-sandbox/pkg/wasm-events"
 	"github.com/tetratelabs/wazero/api"
 )
