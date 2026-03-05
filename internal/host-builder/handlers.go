@@ -3,10 +3,10 @@ package hostbuilder
 import (
 	"context"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/Cloud-RAMP/wasm-sandbox/internal/asmscript"
+	"github.com/Cloud-RAMP/wasm-sandbox/internal/logging"
 	wasmevents "github.com/Cloud-RAMP/wasm-sandbox/pkg/wasm-events"
 	"github.com/tetratelabs/wazero/api"
 )
@@ -30,7 +30,7 @@ func abortHandler(_ *wasmevents.HandlerMap) any {
 		if mod != nil {
 			message := asmscript.ReadASString(mod.Memory(), messagePtr)
 			fileName := asmscript.ReadASString(mod.Memory(), fileNamePtr)
-			log.Printf("AssemblyScript abort: %s at %s:%d:%d", message, fileName, line, column)
+			logging.Logger.Errorf("AssemblyScript abort: %s at %s:%d:%d", message, fileName, line, column)
 		}
 	}
 }
@@ -71,10 +71,11 @@ func setHandler(handlerMap *wasmevents.HandlerMap) any {
 		}
 		val := string(bytes)
 
-		fmt.Printf("SET request %s for %s\n", key, val)
-
 		event := getWASMEvent(ctx, wasmevents.SET, key, val)
-		handlerMap.CallHandler(event)
+		_, err := handlerMap.CallHandler(event)
+		if err != nil {
+			//some error handling here
+		}
 	}
 }
 
@@ -90,13 +91,13 @@ func getHandler(handlerMap *wasmevents.HandlerMap) any {
 		if !ok {
 			return 0
 		}
-		event := getWASMEvent(ctx, wasmevents.SET, string(bytes))
+		event := getWASMEvent(ctx, wasmevents.GET, string(bytes))
 
 		// do some sort of redis operation here, up to the external handler
 		val, err := handlerMap.CallHandler(event)
 		if err != nil {
-			// some sort of error handling here
-			return 0
+			ptr, _, _ := asmscript.CreateASError(mod, fmt.Errorf("Failed to execute GET hander"))
+			return uint32(ptr)
 		}
 
 		// insert the string into module memory
@@ -121,8 +122,6 @@ func logHandler(handlerMap *wasmevents.HandlerMap) any {
 			return
 		}
 		info := string(bytes)
-
-		fmt.Printf("LOG request for %s\n", info)
 
 		event := getWASMEvent(ctx, wasmevents.LOG, info)
 		handlerMap.CallHandler(event)
@@ -161,7 +160,8 @@ func getUsersHandler(handlerMap *wasmevents.HandlerMap) any {
 
 		ptr, _, err := asmscript.CreateASError(mod, fmt.Errorf("testing error"))
 		if err != nil {
-			return 0
+			ptr, _, _ := asmscript.CreateASError(mod, fmt.Errorf("Failed to execute GET_USERS hander"))
+			return uint32(ptr)
 		}
 
 		return uint32(ptr)
@@ -218,7 +218,11 @@ func fetchHandler(handlerMap *wasmevents.HandlerMap) any {
 		body := string(bytes)
 
 		event := getWASMEvent(ctx, wasmevents.FETCH, url, method, body)
-		handlerMap.CallHandler(event)
+		_, err := handlerMap.CallHandler(event)
+		if err != nil {
+			ptr, _, _ := asmscript.CreateASError(mod, fmt.Errorf("Failed to execute FETCH hander"))
+			return uint32(ptr)
+		}
 
 		// TODO: remove
 		resp := "bruh"

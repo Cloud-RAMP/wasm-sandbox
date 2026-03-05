@@ -8,6 +8,7 @@ import (
 
 	"github.com/Cloud-RAMP/wasm-sandbox/internal/asmscript"
 	"github.com/Cloud-RAMP/wasm-sandbox/internal/loader"
+	"github.com/Cloud-RAMP/wasm-sandbox/internal/logging"
 	wasmevents "github.com/Cloud-RAMP/wasm-sandbox/pkg/wasm-events"
 	wsevents "github.com/Cloud-RAMP/wasm-sandbox/pkg/ws-events"
 	"github.com/tetratelabs/wazero"
@@ -72,16 +73,17 @@ type SandboxStoreCfg struct {
 // The event will be handled by whatever custom event handler the user has set up
 func (s *SandboxStore) ExecuteOnModule(ctx context.Context, wsEvent wsevents.WSEventInfo) error {
 	if !wsEvent.EventType.Valid() {
+		logging.Logger.Warn("Execute called with invalid event type")
 		return fmt.Errorf("Invalid WS event type")
 	}
 
 	active, err := s.loadModule(wsEvent.InstanceId)
 	if err != nil {
-		fmt.Printf("error loading module: %v\n", err)
+		return err
 	}
 
 	if active == nil {
-		fmt.Printf("Active is nil after loading")
+		logging.Logger.Error("Active module is nil after loading")
 		return fmt.Errorf("Active is nil after loading")
 	}
 
@@ -106,7 +108,7 @@ func (s *SandboxStore) ExecuteOnModule(ctx context.Context, wsEvent wsevents.WSE
 	onMessage := active.module.ExportedFunction(wsEvent.EventType.String())
 	_, err = onMessage.Call(ctx, ptr, memLen)
 	if err != nil {
-		fmt.Printf("%s failed: %v\n", wsEvent.EventType.String(), err)
+		logging.Logger.Errorf("%s operation failed: %v", wsEvent.EventType.String(), err)
 		return err
 	}
 
@@ -130,7 +132,7 @@ func (s *SandboxStore) loadModule(moduleId string) (*ActiveModule, error) {
 
 	// The chan which signifies that this module is being loaded already exists, some other process is doing it
 	if exists {
-		fmt.Printf("Concurrent fetches: waiting on %s\n", moduleId)
+		logging.Logger.Infof("Concurrent fetches: waiting on %s", moduleId)
 		s.loadingModulesMu.Unlock()
 
 		// wait on the signal
@@ -156,6 +158,8 @@ func (s *SandboxStore) loadModule(moduleId string) (*ActiveModule, error) {
 		}
 	}()
 
+	logging.Logger.Infof("Fetching module %s from external store", moduleId)
+
 	// Give the loader a 5 second timeout
 	// the cancel function is deferred to avoid "context leaks"
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -163,6 +167,7 @@ func (s *SandboxStore) loadModule(moduleId string) (*ActiveModule, error) {
 
 	module, err := loader.Load(ctx, s.runtime, moduleId)
 	if err != nil {
+		logging.Logger.Errorf("Failed to load module %s from external store: %v", moduleId, err)
 		return nil, err
 	}
 

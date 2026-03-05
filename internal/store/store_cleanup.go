@@ -2,8 +2,9 @@ package store
 
 import (
 	"context"
-	"log"
 	"time"
+
+	"github.com/Cloud-RAMP/wasm-sandbox/internal/logging"
 )
 
 // Close all modules and remove them from the map
@@ -11,6 +12,8 @@ func (s *SandboxStore) Close(ctx context.Context) error {
 	if ctx == nil {
 		ctx = context.Background()
 	}
+
+	logging.Logger.Info("Closing sandbox store")
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -45,6 +48,8 @@ func (s *SandboxStore) evictLRU() {
 	mod := s.activeModules[lru]
 	delete(s.activeModules, lru)
 
+	logging.Logger.Infof("Removing LRU module %s", lru)
+
 	// detatch a goroutine to wait on the module's requests and then close it
 	go func() {
 		mod.wg.Wait()
@@ -61,7 +66,7 @@ func (s *SandboxStore) cleanupIdleModules() {
 			delete(s.activeModules, id)
 			active.wg.Wait()
 			active.module.Close(context.Background())
-			log.Printf("Unloaded idle module: %s", id)
+			logging.Logger.Infof("Removing inactive module %s", id)
 		}
 	}
 }

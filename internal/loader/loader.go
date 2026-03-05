@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/Cloud-RAMP/wasm-sandbox/internal/logging"
 	"github.com/tetratelabs/wazero"
 	"github.com/tetratelabs/wazero/api"
 )
@@ -22,7 +23,7 @@ func Load(ctx context.Context, runtime wazero.Runtime, moduleId string) (api.Mod
 		return nil, fmt.Errorf("Loader function is not defined!")
 	}
 
-	fmt.Printf("Loading module %s from external store\n", moduleId)
+	logging.Logger.Infof("Loading module %s from external store", moduleId)
 
 	bytes, err := loader(ctx, moduleId)
 	if err != nil {
