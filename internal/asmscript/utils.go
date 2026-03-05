@@ -41,6 +41,14 @@ func writeHelper(mod *ModuleContext, bytes []byte) (uint64, uint64, error) {
 	if __new == nil {
 		return 0, 0, fmt.Errorf("__new not exported")
 	}
+	memory := mod.Module.Memory()
+	if memory == nil {
+		return 0, 0, fmt.Errorf("could not access module memory")
+	}
+
+	// lock before call to __new, since it modifies the module's memory
+	mod.Mu.Lock()
+	defer mod.Mu.Unlock()
 
 	results, err := __new.Call(mod.Ctx, uint64(len(bytes)), 0)
 	if err != nil {
@@ -53,15 +61,11 @@ func writeHelper(mod *ModuleContext, bytes []byte) (uint64, uint64, error) {
 
 	// __new returns the pointer value
 	ptr := uint32(results[0])
-	memory := mod.Module.Memory()
 
 	// Write UTF-16 data
-	mod.Mu.Lock()
 	if !memory.Write(ptr, bytes) {
-		mod.Mu.Unlock()
 		return 0, 0, fmt.Errorf("failed to write string data")
 	}
-	mod.Mu.Unlock()
 
 	return uint64(ptr), uint64(len(bytes)), nil
 }

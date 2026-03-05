@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/Cloud-RAMP/wasm-sandbox/internal/logging"
+	"github.com/Cloud-RAMP/wasm-sandbox/internal/modulelocks"
 )
 
 // Close all modules and remove them from the map
@@ -53,6 +54,7 @@ func (s *SandboxStore) evictLRU() {
 	// detatch a goroutine to wait on the module's requests and then close it
 	go func() {
 		mod.wg.Wait()
+		modulelocks.Delete(lru)
 		mod.module.Close(context.Background())
 	}()
 }
@@ -65,6 +67,7 @@ func (s *SandboxStore) cleanupIdleModules() {
 		if time.Since(active.lastUsed) > s.maxIdleTime {
 			delete(s.activeModules, id)
 			active.wg.Wait()
+			modulelocks.Delete(id)
 			active.module.Close(context.Background())
 			logging.Logger.Infof("Removing inactive module %s", id)
 		}
