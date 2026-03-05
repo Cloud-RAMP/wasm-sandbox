@@ -7,6 +7,7 @@ import (
 
 	"github.com/Cloud-RAMP/wasm-sandbox/internal/asmscript"
 	"github.com/Cloud-RAMP/wasm-sandbox/internal/logging"
+	"github.com/Cloud-RAMP/wasm-sandbox/internal/modulelocks"
 	wasmevents "github.com/Cloud-RAMP/wasm-sandbox/pkg/wasm-events"
 	"github.com/tetratelabs/wazero/api"
 )
@@ -15,13 +16,45 @@ import (
 
 // Returns a boilerplate WASMEvent object injected with variables from the CTX
 func getWASMEvent(ctx context.Context, eventType wasmevents.WASMEventType, payload ...string) wasmevents.WASMEventInfo {
+	instanceId, ok := ctx.Value("instanceId").(string)
+	if !ok {
+		logging.Logger.Errorf("Failed to parse instanceID from ctx in getWASMEvent")
+		return wasmevents.WASMEventInfo{} // fix this, issue #14
+	}
+
+	connectionId, ok := ctx.Value("connectionId").(string)
+	if !ok {
+		logging.Logger.Errorf("Failed to parse connectionId from ctx in getWASMEvent")
+		return wasmevents.WASMEventInfo{}
+	}
+
+	roomId, ok := ctx.Value("roomId").(string)
+	if !ok {
+		logging.Logger.Errorf("Failed to parse roomId from ctx in getWASMEvent")
+		return wasmevents.WASMEventInfo{}
+	}
+
 	return wasmevents.WASMEventInfo{
-		ConnectionId: ctx.Value("connectionId").(string),
-		InstanceId:   ctx.Value("instanceId").(string),
-		RoomId:       ctx.Value("roomId").(string),
+		ConnectionId: connectionId,
+		InstanceId:   instanceId,
+		RoomId:       roomId,
 		Timestamp:    time.Now().UnixMilli(),
 		EventType:    eventType,
 		Payload:      payload,
+	}
+}
+
+func getModuleContext(ctx context.Context, mod api.Module) *asmscript.ModuleContext {
+	instanceId, ok := ctx.Value("instanceId").(string)
+	if !ok {
+		logging.Logger.Errorf("Failed to parse instanceID from ctx in getModuleContext")
+		return nil
+	}
+
+	return &asmscript.ModuleContext{
+		Ctx:    ctx,
+		Module: mod,
+		Mu:     modulelocks.GetLockReference(instanceId),
 	}
 }
 
@@ -96,12 +129,18 @@ func getHandler(handlerMap *wasmevents.HandlerMap) any {
 		// do some sort of redis operation here, up to the external handler
 		val, err := handlerMap.CallHandler(event)
 		if err != nil {
-			ptr, _, _ := asmscript.CreateASError(mod, fmt.Errorf("Failed to execute GET hander"))
+			ptr, _, _ := asmscript.CreateASError(
+				getModuleContext(ctx, mod),
+				fmt.Errorf("Failed to execute GET hander"),
+			)
 			return uint32(ptr)
 		}
 
 		// insert the string into module memory
-		ptr, _, err := asmscript.CreateASString(mod, val)
+		ptr, _, err := asmscript.CreateASString(
+			getModuleContext(ctx, mod),
+			val,
+		)
 		if err != nil {
 			return 0
 		}
@@ -151,16 +190,15 @@ func getUsersHandler(handlerMap *wasmevents.HandlerMap) any {
 		event := getWASMEvent(ctx, wasmevents.GET_USERS, "")
 		handlerMap.CallHandler(event)
 
-		// TODO: remove dummy data when the system is complete
-		// tempUsers := []string{"billy", "bob", "joe"}
-		// ptr, _, err := asmscript.WriteArray(mod, tempUsers) // writes array o memory
-		// if err != nil {
-		// 	return 0
-		// }
-
-		ptr, _, err := asmscript.CreateASError(mod, fmt.Errorf("testing error"))
+		ptr, _, err := asmscript.CreateASError(
+			getModuleContext(ctx, mod),
+			fmt.Errorf("testing error"),
+		)
 		if err != nil {
-			ptr, _, _ := asmscript.CreateASError(mod, fmt.Errorf("Failed to execute GET_USERS hander"))
+			ptr, _, _ := asmscript.CreateASError(
+				getModuleContext(ctx, mod),
+				fmt.Errorf("Failed to execute GET_USERS hander"),
+			)
 			return uint32(ptr)
 		}
 
@@ -220,14 +258,19 @@ func fetchHandler(handlerMap *wasmevents.HandlerMap) any {
 		event := getWASMEvent(ctx, wasmevents.FETCH, url, method, body)
 		_, err := handlerMap.CallHandler(event)
 		if err != nil {
-			ptr, _, _ := asmscript.CreateASError(mod, fmt.Errorf("Failed to execute FETCH hander"))
+			ptr, _, _ := asmscript.CreateASError(
+				getModuleContext(ctx, mod),
+				fmt.Errorf("Failed to execute FETCH hander"),
+			)
 			return uint32(ptr)
 		}
 
 		// TODO: remove
 		resp := "bruh"
-		ptr, _, _ := asmscript.CreateASString(mod, resp)
-		// ptr, _, _ := asmscript.CreateASError(mod, fmt.Errorf("testing error"))
+		ptr, _, _ := asmscript.CreateASString(
+			getModuleContext(ctx, mod),
+			resp,
+		)
 		return uint32(ptr)
 	}
 }

@@ -1,9 +1,7 @@
 package asmscript
 
 import (
-	"context"
 	"encoding/binary"
-	"fmt"
 
 	"github.com/tetratelabs/wazero/api"
 )
@@ -30,51 +28,23 @@ func ReadASString(mem api.Memory, ptr uint32) string {
 }
 
 // A message string with + denotes a successful string
-func CreateASString(module api.Module, str string) (uint64, uint64, error) {
-	return createStringInternal(module, str, '+')
+func CreateASString(mod *ModuleContext, str string) (uint64, uint64, error) {
+	return createStringInternal(mod, str, '+')
 }
 
 // A message starting with - denotes an error
-func CreateASError(module api.Module, err error) (uint64, uint64, error) {
-	return createStringInternal(module, err.Error(), '-')
+func CreateASError(mod *ModuleContext, err error) (uint64, uint64, error) {
+	return createStringInternal(mod, err.Error(), '-')
 }
 
 // Create a string in the given module's memory
 //
 // Return string location, string length, and possible error
-func createStringInternal(module api.Module, str string, indicator rune) (uint64, uint64, error) {
-	ctx := context.Background()
-
-	// Check that the runtime function exists
-	__new := module.ExportedFunction("__new")
-	if __new == nil {
-		return 0, 0, fmt.Errorf("__new not exported")
-	}
+func createStringInternal(mod *ModuleContext, str string, indicator rune) (uint64, uint64, error) {
 
 	// Convert to UTF-16 Little Endian
 	utf16Data := encodeUTF16LE(str)
 	utf16Data = append([]byte{byte(indicator), 0}, utf16Data...)
-	totalSize := uint64(len(utf16Data))
 
-	// Allocate memory with __new(size, id)
-	// __new creates the headers for data type and data size
-	results, err := __new.Call(ctx, totalSize, uint64(STRING_TYPE_ID))
-	if err != nil {
-		return 0, 0, fmt.Errorf("__new failed: %w", err)
-	}
-
-	if len(results) == 0 {
-		return 0, 0, fmt.Errorf("__new returned no result")
-	}
-
-	// __new returns the pointer value
-	ptr := uint32(results[0])
-	memory := module.Memory()
-
-	// Write UTF-16 data
-	if !memory.Write(ptr, utf16Data) {
-		return 0, 0, fmt.Errorf("failed to write string data")
-	}
-
-	return uint64(ptr), totalSize, nil
+	return writeHelper(mod, utf16Data)
 }

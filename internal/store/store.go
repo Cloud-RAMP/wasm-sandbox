@@ -9,6 +9,7 @@ import (
 	"github.com/Cloud-RAMP/wasm-sandbox/internal/asmscript"
 	"github.com/Cloud-RAMP/wasm-sandbox/internal/loader"
 	"github.com/Cloud-RAMP/wasm-sandbox/internal/logging"
+	"github.com/Cloud-RAMP/wasm-sandbox/internal/modulelocks"
 	wasmevents "github.com/Cloud-RAMP/wasm-sandbox/pkg/wasm-events"
 	wsevents "github.com/Cloud-RAMP/wasm-sandbox/pkg/ws-events"
 	"github.com/tetratelabs/wazero"
@@ -93,7 +94,11 @@ func (s *SandboxStore) ExecuteOnModule(ctx context.Context, wsEvent wsevents.WSE
 	ctx = context.WithValue(ctx, "roomId", wsEvent.RoomId)
 
 	// write the information of the event in module memory so they can read it
-	ptr, memLen, err := asmscript.WriteWSEvent(active.module, wsEvent)
+	ptr, memLen, err := asmscript.WriteWSEvent(&asmscript.ModuleContext{
+		Module: active.module,
+		Ctx:    ctx,
+		Mu:     modulelocks.GetLockReference(active.instanceId),
+	}, wsEvent)
 
 	// Add timeout (defaults to 5 seconds)
 	ctx, cancel := context.WithTimeout(ctx, s.maxExecutionTime)
@@ -108,7 +113,8 @@ func (s *SandboxStore) ExecuteOnModule(ctx context.Context, wsEvent wsevents.WSE
 	onMessage := active.module.ExportedFunction(wsEvent.EventType.String())
 	_, err = onMessage.Call(ctx, ptr, memLen)
 	if err != nil {
-		logging.Logger.Errorf("%s operation failed: %v", wsEvent.EventType.String(), err)
+		// logging.Logger.Errorf("%s operation failed: %v", wsEvent.EventType.String(), err)
+		fmt.Println(err)
 		return err
 	}
 

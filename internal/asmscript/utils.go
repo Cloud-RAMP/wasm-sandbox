@@ -1,6 +1,19 @@
 package asmscript
 
-import "encoding/binary"
+import (
+	"context"
+	"encoding/binary"
+	"fmt"
+	"sync"
+
+	"github.com/tetratelabs/wazero/api"
+)
+
+type ModuleContext struct {
+	Module api.Module
+	Ctx    context.Context
+	Mu     *sync.Mutex
+}
 
 // Encode string to UTF-16 Little Endian bytes
 func encodeUTF16LE(s string) []byte {
@@ -20,4 +33,35 @@ func decodeUTF16LE(b []byte) string {
 		}
 	}
 	return string(runes)
+}
+
+// Write a string to module memory
+func writeHelper(mod *ModuleContext, bytes []byte) (uint64, uint64, error) {
+	__new := mod.Module.ExportedFunction("__new")
+	if __new == nil {
+		return 0, 0, fmt.Errorf("__new not exported")
+	}
+
+	results, err := __new.Call(mod.Ctx, uint64(len(bytes)), 0)
+	if err != nil {
+		return 0, 0, fmt.Errorf("__new failed: %w", err)
+	}
+
+	if len(results) == 0 {
+		return 0, 0, fmt.Errorf("__new returned no result")
+	}
+
+	// __new returns the pointer value
+	ptr := uint32(results[0])
+	memory := mod.Module.Memory()
+
+	// Write UTF-16 data
+	mod.Mu.Lock()
+	if !memory.Write(ptr, bytes) {
+		mod.Mu.Unlock()
+		return 0, 0, fmt.Errorf("failed to write string data")
+	}
+	mod.Mu.Unlock()
+
+	return uint64(ptr), uint64(len(bytes)), nil
 }

@@ -1,12 +1,10 @@
 package asmscript
 
 import (
-	"context"
 	"encoding/binary"
 	"fmt"
 
 	wsevents "github.com/Cloud-RAMP/wasm-sandbox/pkg/ws-events"
-	"github.com/tetratelabs/wazero/api"
 )
 
 /*
@@ -49,64 +47,12 @@ func encodeWSEvent(event wsevents.WSEventInfo) []byte {
 	return encodeArray(feilds)
 }
 
-func WriteWSEvent(module api.Module, event wsevents.WSEventInfo) (uint64, uint64, error) {
+func WriteWSEvent(mod *ModuleContext, event wsevents.WSEventInfo) (uint64, uint64, error) {
 	bytes := encodeWSEvent(event)
-	ctx := context.Background()
-
-	// Check that the runtime function exists
-	__new := module.ExportedFunction("__new")
-	if __new == nil {
-		return 0, 0, fmt.Errorf("__new not exported")
-	}
-
-	results, err := __new.Call(ctx, uint64(len(bytes)), 0)
-	if err != nil {
-		return 0, 0, fmt.Errorf("__new failed: %w", err)
-	}
-
-	if len(results) == 0 {
-		return 0, 0, fmt.Errorf("__new returned no result")
-	}
-
-	// __new returns the pointer value
-	ptr := uint32(results[0])
-	memory := module.Memory()
-
-	// Write UTF-16 data
-	if !memory.Write(ptr, bytes) {
-		return 0, 0, fmt.Errorf("failed to write string data")
-	}
-
-	return uint64(ptr), uint64(len(bytes)), nil
+	return writeHelper(mod, bytes)
 }
 
-func WriteArray(module api.Module, array []string) (uint64, uint64, error) {
+func WriteArray(mod *ModuleContext, array []string) (uint64, uint64, error) {
 	bytes := encodeArray(array)
-	ctx := context.Background()
-
-	// Check that the runtime function exists
-	__new := module.ExportedFunction("__new")
-	if __new == nil {
-		return 0, 0, fmt.Errorf("__new not exported")
-	}
-
-	results, err := __new.Call(ctx, uint64(len(bytes)), 0)
-	if err != nil {
-		return 0, 0, fmt.Errorf("__new failed: %w", err)
-	}
-
-	if len(results) == 0 {
-		return 0, 0, fmt.Errorf("__new returned no result")
-	}
-
-	// __new returns the pointer value
-	ptr := uint32(results[0])
-	memory := module.Memory()
-
-	// Write UTF-16 data
-	if !memory.Write(ptr, bytes) {
-		return 0, 0, fmt.Errorf("failed to write string data")
-	}
-
-	return uint64(ptr), uint64(len(bytes)), nil
+	return writeHelper(mod, bytes)
 }

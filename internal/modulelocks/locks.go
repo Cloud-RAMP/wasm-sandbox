@@ -38,3 +38,15 @@ func Delete(instanceId string) {
 	delete(locks.locks, instanceId)
 	locks.mu.Unlock()
 }
+
+func GetLockReference(instanceId string) *sync.Mutex {
+	locks.mu.Lock()
+	lock, ok := locks.locks[instanceId]
+	if !ok {
+		lock = &sync.Mutex{}
+		locks.locks[instanceId] = lock
+	}
+
+	locks.mu.Unlock()
+	return lock
+}
