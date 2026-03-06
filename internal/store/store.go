@@ -72,7 +72,7 @@ type SandboxStoreCfg struct {
 // Execute a function on a given module
 //
 // The event will be handled by whatever custom event handler the user has set up
-func (s *SandboxStore) ExecuteOnModule(ctx context.Context, wsEvent wsevents.WSEventInfo) error {
+func (s *SandboxStore) ExecuteOnModule(ctx context.Context, wsEvent *wsevents.WSEventInfo) error {
 	if !wsEvent.EventType.Valid() {
 		logging.Logger.Warn("Execute called with invalid event type")
 		return fmt.Errorf("Invalid WS event type")

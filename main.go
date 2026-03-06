@@ -10,14 +10,14 @@ import (
 	wsevents "github.com/Cloud-RAMP/wasm-sandbox/pkg/ws-events"
 )
 
-func dummyHandler(event wasmevents.WASMEventInfo) (string, error) {
+func dummyHandler(event *wasmevents.WASMEventInfo) (string, error) {
 	// fmt.Println("New event")
 	// fmt.Printf("Event %s from %s\n", event.EventType.String(), event.InstanceId)
 	// fmt.Println("Args:", event.Payload)
 	return "dummy", nil
 }
 
-func debugHandler(event wasmevents.WASMEventInfo) (string, error) {
+func debugHandler(event *wasmevents.WASMEventInfo) (string, error) {
 	fmt.Printf("WASM DEBUG: %v\n", event.Payload)
 	return "", nil
 }
@@ -47,7 +47,7 @@ func main() {
 	}
 
 	// sample event
-	event := wsevents.WSEventInfo{
+	event := &wsevents.WSEventInfo{
 		ConnectionId: "first-connection",
 		InstanceId:   "example/build/release.wasm", // simple loader function is only configued to use filenames as instance IDs
 		RoomId:       "first-room",
@@ -59,7 +59,7 @@ func main() {
 	go store.ExecuteOnModule(ctx, event)
 
 	// second event to introduce concurrency issues
-	event = wsevents.WSEventInfo{
+	event = &wsevents.WSEventInfo{
 		ConnectionId: "second-connection",
 		InstanceId:   "example/build/release.wasm",
 		RoomId:       "first-room",
@@ -70,7 +70,7 @@ func main() {
 	go store.ExecuteOnModule(ctx, event)
 
 	// second event to introduce concurrency issues
-	event = wsevents.WSEventInfo{
+	event = &wsevents.WSEventInfo{
 		ConnectionId: "third-connection",
 		InstanceId:   "example/build/release.wasm",
 		RoomId:       "first-room",

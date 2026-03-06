@@ -10,7 +10,7 @@ import (
 	wsevents "github.com/Cloud-RAMP/wasm-sandbox/pkg/ws-events"
 )
 
-func dummyHandler(event wasmevents.WASMEventInfo) (string, error) {
+func dummyHandler(event *wasmevents.WASMEventInfo) (string, error) {
 	return "dummy", nil
 }
 
@@ -40,7 +40,7 @@ func BenchmarkExecuteOnModule(b *testing.B) {
 	store := setupStore(b)
 	ctx := context.Background()
 
-	event := wsevents.WSEventInfo{
+	event := &wsevents.WSEventInfo{
 		ConnectionId: "bench-connection",
 		InstanceId:   "../example/build/release.wasm",
 		RoomId:       "bench-room",
