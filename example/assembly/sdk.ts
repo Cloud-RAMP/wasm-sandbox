@@ -6,12 +6,14 @@ export function debug(msg: string): void {
 }
 
 export class Context {
-  store: Store
-  room: Room
+  store: Store;
+  db: DB;
+  room: Room;
 
   constructor(){
-    this.store = new Store()
-    this.room = new Room()
+    this.store = new Store();
+    this.room = new Room();
+    this.db = new DB();
   }
   
   log(msg: string): void {
@@ -26,11 +28,22 @@ export class Context {
 
 class Store {
   set(key: string, value: string): void {
-    env._set(to_usize(key), key.length, to_usize(value), value.length)
+    env._set(to_usize(key), key.length, to_usize(value), value.length);
   }
 
   get(key: string): Result<string> {    
     const valPtr = env._get(to_usize(key), key.length);
+    return get_external_string(valPtr);
+  }
+}
+
+class DB {
+  set(key: string, value: string): void {
+    env._dbSet(to_usize(key), key.length, to_usize(value), value.length);
+  }
+
+  get(key: string): Result<string> {    
+    const valPtr = env._dbGet(to_usize(key), key.length);
     return get_external_string(valPtr);
   }
 }
@@ -46,10 +59,10 @@ class Room {
     const buf = changetype<ArrayBuffer>(ptr);
     const users = decodeStringArray(buf);
 
-    return users
+    return users;
   }
 
   sendMessage(recipient: string, message: string): void {
-    env._sendMessage(to_usize(recipient), recipient.length, to_usize(message), message.length, )
+    env._sendMessage(to_usize(recipient), recipient.length, to_usize(message), message.length);
   }
 }

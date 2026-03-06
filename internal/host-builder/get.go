@@ -10,7 +10,7 @@ import (
 	"github.com/tetratelabs/wazero/api"
 )
 
-func getHandler(handlerMap *wasmevents.HandlerMap) any {
+func getHandler(handlerMap *wasmevents.HandlerMap, getType wasmevents.WASMEventType) any {
 	return func(ctx context.Context, mod api.Module, keyPtr uint32, keyLen uint32) uint32 {
 		mem := mod.Memory()
 		if mem == nil {
@@ -22,15 +22,15 @@ func getHandler(handlerMap *wasmevents.HandlerMap) any {
 			return 0
 		}
 
-		event, err := getWASMEvent(ctx, wasmevents.GET, string(bytes))
+		event, err := getWASMEvent(ctx, getType, string(bytes))
 		if event == nil {
-			logging.Logger.Errorf("Failed to create WASM event in handler %s: %v", wasmevents.GET.String(), err)
+			logging.Logger.Errorf("Failed to create WASM event in handler %s: %v", getType.String(), err)
 			return 0
 		}
 
 		modCtx, err := getModuleContext(ctx, mod)
 		if err != nil {
-			logging.Logger.Errorf("Failed to getModuleContext in handler %s: %v", wasmevents.FETCH.String(), err)
+			logging.Logger.Errorf("Failed to getModuleContext in handler %s: %v", getType.String(), err)
 			return 0
 		}
 
@@ -38,7 +38,7 @@ func getHandler(handlerMap *wasmevents.HandlerMap) any {
 		if err != nil {
 			ptr, _, _ := asmscript.CreateASError(
 				modCtx,
-				fmt.Errorf("Failed to execute GET hander"),
+				fmt.Errorf("Failed to execute handler %s: %v", getType, err),
 			)
 			return uint32(ptr)
 		}
