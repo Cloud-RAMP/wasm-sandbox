@@ -23,12 +23,22 @@ func BuildHostModule(runtime wazero.Runtime, handlerMap *wasmevents.HandlerMap) 
 
 	// SET function
 	hostModuleBuilder.NewFunctionBuilder().
-		WithFunc(setHandler(handlerMap)).
+		WithFunc(setHandler(handlerMap, wasmevents.SET)).
+		Export(wasmevents.SET.String())
+
+	// DB_SET function
+	hostModuleBuilder.NewFunctionBuilder().
+		WithFunc(setHandler(handlerMap, wasmevents.DB_SET)).
 		Export(wasmevents.SET.String())
 
 	// GET function
 	hostModuleBuilder.NewFunctionBuilder().
-		WithFunc(getHandler(handlerMap)).
+		WithFunc(getHandler(handlerMap, wasmevents.GET)).
+		Export(wasmevents.GET.String())
+
+	// DB_GET function
+	hostModuleBuilder.NewFunctionBuilder().
+		WithFunc(getHandler(handlerMap, wasmevents.DB_GET)).
 		Export(wasmevents.GET.String())
 
 	// LOG

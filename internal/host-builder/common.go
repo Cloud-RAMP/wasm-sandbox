@@ -41,6 +41,7 @@ func getWASMEvent(ctx context.Context, eventType wasmevents.WASMEventType, paylo
 	}, nil
 }
 
+// Return a "ModuleContext" object to reduce boilerplate in handler code
 func getModuleContext(ctx context.Context, mod api.Module) (*asmscript.ModuleContext, error) {
 	instanceId, ok := ctx.Value("instanceId").(string)
 	if !ok {
@@ -57,6 +58,6 @@ func getModuleContext(ctx context.Context, mod api.Module) (*asmscript.ModuleCon
 	return &asmscript.ModuleContext{
 		Ctx:    ctx,
 		Module: mod,
-		Mu:     modulelocks.GetLockReference(instanceId),
+		Mu:     lock,
 	}, nil
 }

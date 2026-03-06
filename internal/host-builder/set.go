@@ -8,7 +8,7 @@ import (
 	"github.com/tetratelabs/wazero/api"
 )
 
-func setHandler(handlerMap *wasmevents.HandlerMap) any {
+func setHandler(handlerMap *wasmevents.HandlerMap, setType wasmevents.WASMEventType) any {
 	return func(ctx context.Context, mod api.Module, keyPtr uint32, keyLen uint32, valPtr uint32, valLen uint32) {
 		mem := mod.Memory()
 		if mem == nil {
@@ -27,14 +27,15 @@ func setHandler(handlerMap *wasmevents.HandlerMap) any {
 		}
 		val := string(bytes)
 
-		event, err := getWASMEvent(ctx, wasmevents.SET, key, val)
+		event, err := getWASMEvent(ctx, setType, key, val)
 		if event == nil {
-			logging.Logger.Errorf("Failed to create WASM event in handler %s: %v", wasmevents.SET.String(), err)
+			logging.Logger.Errorf("Failed to create WASM event in handler %s: %v", setType.String(), err)
 			return
 		}
+
 		_, err = handlerMap.CallHandler(event)
 		if err != nil {
-			//some error handling here
+			logging.Logger.Errorf("Failed to execute handler %s: %v", setType.String(), err)
 		}
 	}
 }
