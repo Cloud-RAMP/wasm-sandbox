@@ -5,6 +5,7 @@ export function onMessage(event: WSEvent): void {
   const ctx = new Context();
 
   debug("User " + event.connectionId + " called onMessage");
+  ctx.db.get("key x");
 
   // let getUsersRes = ctx.room.getUsers();
   // if (getUsersRes.error) {

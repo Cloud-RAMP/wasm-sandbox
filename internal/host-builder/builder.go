@@ -9,8 +9,19 @@ import (
 	"github.com/tetratelabs/wazero/api"
 )
 
-func BuildHostModule(runtime wazero.Runtime, handlerMap *wasmevents.HandlerMap) (api.Module, error) {
-	hostModuleBuilder := runtime.NewHostModuleBuilder("env")
+var hostModuleBuilder wazero.HostModuleBuilder
+var handlerMap *wasmevents.HandlerMap
+
+// type this later
+// func addFunctionToHost(handlerFunc interface{}, eventType wasmevents.WASMEventType) {
+// 	hostModuleBuilder.NewFunctionBuilder().
+// 		WithFunc(handlerFunc(handlerMap)).
+// 		Export(eventType.String())
+// }
+
+func BuildHostModule(runtime wazero.Runtime, _handlerMap *wasmevents.HandlerMap) (api.Module, error) {
+	hostModuleBuilder = runtime.NewHostModuleBuilder("env")
+	handlerMap = _handlerMap
 
 	hostModuleBuilder.NewFunctionBuilder().
 		WithFunc(abortHandler(handlerMap)).
@@ -29,7 +40,7 @@ func BuildHostModule(runtime wazero.Runtime, handlerMap *wasmevents.HandlerMap) 
 	// DB_SET function
 	hostModuleBuilder.NewFunctionBuilder().
 		WithFunc(setHandler(handlerMap, wasmevents.DB_SET)).
-		Export(wasmevents.SET.String())
+		Export(wasmevents.DB_SET.String())
 
 	// GET function
 	hostModuleBuilder.NewFunctionBuilder().
@@ -39,7 +50,7 @@ func BuildHostModule(runtime wazero.Runtime, handlerMap *wasmevents.HandlerMap) 
 	// DB_GET function
 	hostModuleBuilder.NewFunctionBuilder().
 		WithFunc(getHandler(handlerMap, wasmevents.DB_GET)).
-		Export(wasmevents.GET.String())
+		Export(wasmevents.DB_GET.String())
 
 	// LOG
 	hostModuleBuilder.NewFunctionBuilder().
