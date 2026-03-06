@@ -36,7 +36,7 @@ func encodeArray(arr []string) []byte {
 
 // A WS event will just be encoded as an array of fields,
 // it will be assumed that they are in the same order every time
-func encodeWSEvent(event wsevents.WSEventInfo) []byte {
+func encodeWSEvent(event *wsevents.WSEventInfo) []byte {
 	feilds := []string{
 		event.ConnectionId,
 		event.RoomId,
@@ -47,7 +47,7 @@ func encodeWSEvent(event wsevents.WSEventInfo) []byte {
 	return encodeArray(feilds)
 }
 
-func WriteWSEvent(mod *ModuleContext, event wsevents.WSEventInfo) (uint64, uint64, error) {
+func WriteWSEvent(mod *ModuleContext, event *wsevents.WSEventInfo) (uint64, uint64, error) {
 	bytes := encodeWSEvent(event)
 	return writeHelper(mod, bytes)
 }

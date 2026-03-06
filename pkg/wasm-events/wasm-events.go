@@ -52,7 +52,7 @@ func (e WASMEventType) String() string {
 	return eventStrings[e]
 }
 
-type HandlerFunction func(WASMEventInfo) (string, error)
+type HandlerFunction func(*WASMEventInfo) (string, error)
 type HandlerMap map[WASMEventType]HandlerFunction
 
 func NewHandlerMap() *HandlerMap {
@@ -66,7 +66,7 @@ func (m *HandlerMap) AddHandler(event WASMEventType, handler HandlerFunction) *H
 	return m
 }
 
-func (m *HandlerMap) CallHandler(event WASMEventInfo) (string, error) {
+func (m *HandlerMap) CallHandler(event *WASMEventInfo) (string, error) {
 	h, ok := (*m)[event.EventType]
 	if !ok {
 		return "", fmt.Errorf("No handler present for %s event", event.EventType.String())
