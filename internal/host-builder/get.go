@@ -28,12 +28,7 @@ func getHandler(handlerMap *wasmevents.HandlerMap, getType wasmevents.WASMEventT
 			return 0
 		}
 
-		modCtx, err := getModuleContext(ctx, mod)
-		if err != nil {
-			logging.Logger.Errorf("Failed to getModuleContext in handler %s: %v", getType.String(), err)
-			return 0
-		}
-
+		modCtx := getModuleContext(ctx, mod)
 		val, err := handlerMap.CallHandler(event)
 		if err != nil {
 			ptr, _, _ := asmscript.CreateASError(

@@ -24,6 +24,8 @@ func setupStore(tb testing.TB) *store.SandboxStore {
 		HandlerMap: wasmevents.NewHandlerMap().
 			AddHandler(wasmevents.GET, dummyHandler).
 			AddHandler(wasmevents.SET, dummyHandler).
+			AddHandler(wasmevents.DB_GET, dummyHandler).
+			AddHandler(wasmevents.DB_SET, dummyHandler).
 			AddHandler(wasmevents.BROADCAST, dummyHandler).
 			AddHandler(wasmevents.LOG, dummyHandler).
 			AddHandler(wasmevents.DEBUG, dummyHandler).

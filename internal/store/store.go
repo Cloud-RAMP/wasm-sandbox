@@ -93,11 +93,14 @@ func (s *SandboxStore) ExecuteOnModule(ctx context.Context, wsEvent *wsevents.WS
 	ctx = context.WithValue(ctx, "connectionId", wsEvent.ConnectionId)
 	ctx = context.WithValue(ctx, "roomId", wsEvent.RoomId)
 
+	// Locks need to be held for the entire duration of module execution
+	modulelocks.Lock(wsEvent.InstanceId)
+	defer modulelocks.Unlock(wsEvent.InstanceId)
+
 	// write the information of the event in module memory so they can read it
 	ptr, memLen, err := asmscript.WriteWSEvent(&asmscript.ModuleContext{
 		Module: active.module,
 		Ctx:    ctx,
-		Mu:     modulelocks.GetLockReference(active.instanceId),
 	}, wsEvent)
 
 	// Add timeout (defaults to 5 seconds)

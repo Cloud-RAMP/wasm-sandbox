@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"github.com/Cloud-RAMP/wasm-sandbox/internal/asmscript"
-	modulelocks "github.com/Cloud-RAMP/wasm-sandbox/internal/module-locks"
 	wasmevents "github.com/Cloud-RAMP/wasm-sandbox/pkg/wasm-events"
 	"github.com/tetratelabs/wazero/api"
 )
@@ -42,22 +41,9 @@ func getWASMEvent(ctx context.Context, eventType wasmevents.WASMEventType, paylo
 }
 
 // Return a "ModuleContext" object to reduce boilerplate in handler code
-func getModuleContext(ctx context.Context, mod api.Module) (*asmscript.ModuleContext, error) {
-	instanceId, ok := ctx.Value("instanceId").(string)
-	if !ok {
-		err := fmt.Errorf("Failed to parse instanceID from ctx in getModuleContext")
-		return nil, err
-	}
-
-	lock := modulelocks.GetLockReference(instanceId)
-	if lock == nil {
-		err := fmt.Errorf("Failed to get lock for module %s", instanceId)
-		return nil, err
-	}
-
+func getModuleContext(ctx context.Context, mod api.Module) *asmscript.ModuleContext {
 	return &asmscript.ModuleContext{
 		Ctx:    ctx,
 		Module: mod,
-		Mu:     lock,
-	}, nil
+	}
 }

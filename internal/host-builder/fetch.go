@@ -45,11 +45,7 @@ func fetchHandler(handlerMap *wasmevents.HandlerMap) any {
 			return 0
 		}
 
-		modCtx, err := getModuleContext(ctx, mod)
-		if err != nil {
-			logging.Logger.Errorf("Failed to getModuleContext in fetchHandler: %v", err)
-			return 0
-		}
+		modCtx := getModuleContext(ctx, mod)
 
 		resp, err := handlerMap.CallHandler(event)
 		if err != nil {

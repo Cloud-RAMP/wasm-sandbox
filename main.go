@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	"github.com/Cloud-RAMP/wasm-sandbox/internal/store"
@@ -34,6 +35,8 @@ func main() {
 		HandlerMap: wasmevents.NewHandlerMap().
 			AddHandler(wasmevents.GET, dummyHandler).
 			AddHandler(wasmevents.SET, dummyHandler).
+			AddHandler(wasmevents.DB_GET, dummyHandler).
+			AddHandler(wasmevents.DB_SET, dummyHandler).
 			AddHandler(wasmevents.BROADCAST, dummyHandler).
 			AddHandler(wasmevents.LOG, dummyHandler).
 			AddHandler(wasmevents.DEBUG, debugHandler).
@@ -46,43 +49,27 @@ func main() {
 		return
 	}
 
-	// sample event
-	event := &wsevents.WSEventInfo{
-		ConnectionId: "first-connection",
-		InstanceId:   "example/build/release.wasm", // simple loader function is only configued to use filenames as instance IDs
-		RoomId:       "first-room",
-		Payload:      "hello, world!",
-		EventType:    wsevents.ON_MESSAGE,
-		Timestamp:    time.Now().UnixMilli(),
+	var wg sync.WaitGroup
+
+	for i := range 10 {
+		// sample event
+		event := &wsevents.WSEventInfo{
+			ConnectionId: fmt.Sprintf("connection-%d", i),
+			InstanceId:   "example/build/release.wasm", // simple loader function is only configued to use filenames as instance IDs
+			RoomId:       "first-room",
+			Payload:      "hello, world!",
+			EventType:    wsevents.ON_MESSAGE,
+			Timestamp:    time.Now().UnixMilli(),
+		}
+
+		wg.Add(1)
+
+		go func() {
+			store.ExecuteOnModule(ctx, event)
+			wg.Done()
+		}()
 	}
 
-	go store.ExecuteOnModule(ctx, event)
-
-	// // second event to introduce concurrency issues
-	// event = &wsevents.WSEventInfo{
-	// 	ConnectionId: "second-connection",
-	// 	InstanceId:   "example/build/release.wasm",
-	// 	RoomId:       "first-room",
-	// 	Payload:      "hello, world!",
-	// 	EventType:    wsevents.ON_MESSAGE,
-	// 	Timestamp:    time.Now().UnixMilli(),
-	// }
-	// go store.ExecuteOnModule(ctx, event)
-
-	// // second event to introduce concurrency issues
-	// event = &wsevents.WSEventInfo{
-	// 	ConnectionId: "third-connection",
-	// 	InstanceId:   "example/build/release.wasm",
-	// 	RoomId:       "first-room",
-	// 	Payload:      "hello, world!",
-	// 	EventType:    wsevents.ON_MESSAGE,
-	// 	Timestamp:    time.Now().UnixMilli(),
-	// }
-	// go store.ExecuteOnModule(ctx, event)
-
 	fmt.Println("Finished sending requests")
-
-	// sleep so that all events can be read
-	// won't need this in the server, as it will be a long running process
-	time.Sleep(3 * time.Second)
+	wg.Wait()
 }

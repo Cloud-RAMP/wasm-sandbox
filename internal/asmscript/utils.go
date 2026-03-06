@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/binary"
 	"fmt"
-	"sync"
 
 	"github.com/tetratelabs/wazero/api"
 )
@@ -12,7 +11,6 @@ import (
 type ModuleContext struct {
 	Module api.Module
 	Ctx    context.Context
-	Mu     *sync.Mutex
 }
 
 // Encode string to UTF-16 Little Endian bytes
@@ -45,10 +43,6 @@ func writeHelper(mod *ModuleContext, bytes []byte) (uint64, uint64, error) {
 	if memory == nil {
 		return 0, 0, fmt.Errorf("could not access module memory")
 	}
-
-	// lock before call to __new, since it modifies the module's memory
-	mod.Mu.Lock()
-	defer mod.Mu.Unlock()
 
 	results, err := __new.Call(mod.Ctx, uint64(len(bytes)), 0)
 	if err != nil {

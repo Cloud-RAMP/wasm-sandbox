@@ -18,12 +18,7 @@ func getUsersHandler(handlerMap *wasmevents.HandlerMap) any {
 			return 0
 		}
 
-		modCtx, err := getModuleContext(ctx, mod)
-		if err != nil {
-			logging.Logger.Errorf("Failed to getModuleContext in handler %s: %v", wasmevents.GET_USERS.String(), err)
-			return 0
-		}
-
+		modCtx := getModuleContext(ctx, mod)
 		resp, err := handlerMap.CallHandler(event)
 		if err != nil {
 			ptr, _, _ := asmscript.CreateASError(
