@@ -7,14 +7,41 @@ import (
 type WASMEventType int
 
 const (
+	// Default "ABORT" method called by WASM when something fails
 	ABORT WASMEventType = iota
+
+	// Broadcast a message from a user to a room
 	BROADCAST
+
+	// Set a key in an in-memory KV store
+	//
+	// Do we distribute this across all instances, or just within the machine?
 	SET
+
+	// Get a value from in-memory KV store
+	//
+	// Same question as above
 	GET
+
+	// Set a key/value in the persistent storage
+	DB_SET
+
+	// Get a key/value in the persistent storage
+	DB_GET
+
+	// Log something (in the user application)
 	LOG
+
+	// Debug, for development purposes
 	DEBUG
+
+	// Get a list of all users in the current room
 	GET_USERS
+
+	// Send a message to a specific user
 	SEND_MESSAGE
+
+	// Send an HTTP request to a given URL with a request type and body
 	FETCH
 )
 
@@ -41,6 +68,8 @@ var eventStrings = [...]string{
 	"broadcast",
 	"set",
 	"get",
+	"dbSet",
+	"dbGet",
 	"log",
 	"debug",
 	"getUsers",
