@@ -1,4 +1,4 @@
-import { decodeStringArray, get_external_string, to_usize, Result } from "./protocol";
+import { decodeStringArray, get_result, to_usize, get_status, Result, Status } from "./protocol";
 import * as env from "./env";
 
 export function debug(msg: string): void {
@@ -16,41 +16,45 @@ export class Context {
     this.db = new DB();
   }
   
-  log(msg: string): void {
-    env._log(to_usize(msg), msg.length);
+  log(msg: string): Status {
+    const errPtr = env._log(to_usize(msg), msg.length);
+    return get_status(errPtr);
   }
 
   fetch(url: string, method: string, body: string): Result<string> {
     const valPtr = env._fetch(to_usize(url), url.length, to_usize(method), method.length, to_usize(body), body.length);
-    return get_external_string(valPtr);
+    return get_result(valPtr);
   }
 }
 
 class Store {
-  set(key: string, value: string): void {
-    env._set(to_usize(key), key.length, to_usize(value), value.length);
+  set(key: string, value: string): Status {
+    const errPtr = env._set(to_usize(key), key.length, to_usize(value), value.length);
+    return get_status(errPtr);
   }
 
   get(key: string): Result<string> {    
     const valPtr = env._get(to_usize(key), key.length);
-    return get_external_string(valPtr);
+    return get_result(valPtr);
   }
 }
 
 class DB {
-  set(key: string, value: string): void {
-    env._dbSet(to_usize(key), key.length, to_usize(value), value.length);
+  set(key: string, value: string): Status {
+    const errPtr = env._dbSet(to_usize(key), key.length, to_usize(value), value.length);
+    return get_status(errPtr);
   }
 
   get(key: string): Result<string> {    
     const valPtr = env._dbGet(to_usize(key), key.length);
-    return get_external_string(valPtr);
+    return get_result(valPtr);
   }
 }
 
 class Room {
-  broadcast(msg: string): void {
-    env._broadcast(to_usize(msg), msg.length);
+  broadcast(msg: string): Status {
+    const errPtr = env._broadcast(to_usize(msg), msg.length);
+    return get_status(errPtr);
   }
 
   getUsers(): Result<string[]> {
@@ -62,7 +66,8 @@ class Room {
     return users;
   }
 
-  sendMessage(recipient: string, message: string): void {
-    env._sendMessage(to_usize(recipient), recipient.length, to_usize(message), message.length);
+  sendMessage(recipient: string, message: string): Status {
+    const errPtr = env._sendMessage(to_usize(recipient), recipient.length, to_usize(message), message.length);
+    return get_status(errPtr);
   }
 }

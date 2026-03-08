@@ -21,6 +21,7 @@ export class WSEvent {
   timestamp: number = 0;
 }
 
+// The result class will have either a data item or an error
 export class Result<T> {
     data: T;
     error: string;
@@ -32,6 +33,23 @@ export class Result<T> {
 
     isError(): bool {
         return this.error !== "";
+    }
+}
+
+// The status class has either an error or absence of an error
+export class Status {
+    error: string;
+
+    constructor(error: string = "") {
+        this.error = error;
+    }
+
+    isError(): bool {
+        return this.error !== "";
+    }
+
+    isOk(): bool {
+        return this.error === "";
     }
 }
 
@@ -104,7 +122,17 @@ export function to_usize(str: string): usize {
     return changetype<usize>(ptr);
 }
 
-export function get_external_string(ptr: u32): Result<string> {
+export function get_status(ptr: u32): Status {
+    if (ptr == 0) {
+        return new Status();
+    }
+
+    const len = load<i32>(ptr - 4);
+    const val = String.UTF16.decodeUnsafe(ptr + 2, len - 2);
+    return new Status(val);
+}
+
+export function get_result(ptr: u32): Result<string> {
     // assembly script strings have the length stored 4 bytes before the string itself
     const len = load<i32>(ptr - 4);
 

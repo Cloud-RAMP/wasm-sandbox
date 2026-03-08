@@ -6,12 +6,12 @@ export function onMessage(event: WSEvent): void {
 
   debug("User " + event.connectionId + " called onMessage");
 
-  let fetchRes = ctx.fetch("helloo", "GET", "hello");
-  if (fetchRes.isError()) {
-    debug("fetch error: " + fetchRes.error);
-  } else {
-    debug("fetchResponse: " + fetchRes.data);
-  }
+  // let res = ctx.log("hello?");
+  // if (res.isError()) {
+  //   debug("log error: " + res.error);
+  // } else {
+  //   debug("log successful");
+  // }
 }
 
 export function onJoin(event: WSEvent): void {
