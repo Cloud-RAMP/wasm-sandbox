@@ -13,7 +13,7 @@ import (
 
 func dummyHandler(event *wasmevents.WASMEventInfo) (string, error) {
 	// fmt.Println("New event")
-	fmt.Printf("Event %s from %s\n", event.EventType.String(), event.InstanceId)
+	// fmt.Printf("Event %s from %s\n", event.EventType.String(), event.InstanceId)
 	// fmt.Println("Args:", event.Payload)
 	return "dummy", nil
 }
@@ -38,6 +38,7 @@ func main() {
 			AddHandler(wasmevents.DB_GET, dummyHandler).
 			AddHandler(wasmevents.DB_SET, dummyHandler).
 			AddHandler(wasmevents.BROADCAST, dummyHandler).
+			AddHandler(wasmevents.FETCH, dummyHandler).
 			AddHandler(wasmevents.LOG, dummyHandler).
 			AddHandler(wasmevents.DEBUG, debugHandler).
 			AddHandler(wasmevents.GET_USERS, dummyHandler).
