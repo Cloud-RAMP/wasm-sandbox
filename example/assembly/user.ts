@@ -5,21 +5,13 @@ export function onMessage(event: WSEvent): void {
   const ctx = new Context();
 
   debug("User " + event.connectionId + " called onMessage");
-  ctx.db.get("key x");
 
-  // let getUsersRes = ctx.room.getUsers();
-  // if (getUsersRes.error) {
-  //   debug("getUsers error: " + getUsersRes.error);
-  // } else {
-  //   debug("getUsers: " + getUsersRes.data.join(","));
-  // }
-
-  // let fetchRes = ctx.fetch("helloo", "GET", "hello");
-  // if (fetchRes.error) {
-  //   debug("fetch error: " + fetchRes.error);
-  // } else {
-  //   debug("fetchResponse: " + fetchRes.data);
-  // }
+  let fetchRes = ctx.fetch("helloo", "GET", "hello");
+  if (fetchRes.isError()) {
+    debug("fetch error: " + fetchRes.error);
+  } else {
+    debug("fetchResponse: " + fetchRes.data);
+  }
 }
 
 export function onJoin(event: WSEvent): void {

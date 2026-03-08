@@ -2,6 +2,8 @@ package wasmevents
 
 import (
 	"fmt"
+
+	modulelocks "github.com/Cloud-RAMP/wasm-sandbox/internal/module-locks"
 )
 
 type WASMEventType int
@@ -101,5 +103,10 @@ func (m *HandlerMap) CallHandler(event *WASMEventInfo) (string, error) {
 		return "", fmt.Errorf("No handler present for %s event", event.EventType.String())
 	}
 
-	return h(event)
+	// give up lock control while some external event is called
+	modulelocks.Unlock(event.InstanceId)
+	res, err := h(event)
+	modulelocks.Lock(event.InstanceId)
+
+	return res, err
 }
