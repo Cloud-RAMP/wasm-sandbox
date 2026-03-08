@@ -47,3 +47,26 @@ func getModuleContext(ctx context.Context, mod api.Module) *asmscript.ModuleCont
 		Module: mod,
 	}
 }
+
+type errorMessagesType int
+
+const (
+	MOD_MEMORY_ERR errorMessagesType = iota
+	MEM_READ_ERR
+	GET_WASM_EVENT_ERR
+	CREATE_AS_STRING_ERR
+	EXTERNAL_HANDLER_ERR
+)
+
+var errorMessages = [...]error{
+	fmt.Errorf("Failed to access module memory"),
+	fmt.Errorf("Failed to read module memory"),
+	fmt.Errorf("Failed to parse event information"),
+	fmt.Errorf("Failed to create string in WASM memory"),
+	fmt.Errorf("Failed external call"),
+}
+
+func writeErrorMessage(mod *asmscript.ModuleContext, err errorMessagesType) uint32 {
+	ptr, _, _ := asmscript.CreateASError(mod, errorMessages[err])
+	return uint32(ptr)
+}
