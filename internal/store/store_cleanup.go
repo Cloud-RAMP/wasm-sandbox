@@ -49,7 +49,7 @@ func (s *SandboxStore) evictLRU() {
 	mod := s.activeModules[lru]
 	delete(s.activeModules, lru)
 
-	logging.Logger.Infof("Removing LRU module %s", lru)
+	// logging.Logger.Infof("Removing LRU module %s", lru)
 
 	// detatch a goroutine to wait on the module's requests and then close it
 	go func() {

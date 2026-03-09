@@ -141,7 +141,7 @@ func (s *SandboxStore) loadModule(moduleId string) (*ActiveModule, error) {
 
 	// The chan which signifies that this module is being loaded already exists, some other process is doing it
 	if exists {
-		logging.Logger.Infof("Concurrent fetches: waiting on %s", moduleId)
+		// logging.Logger.Infof("Concurrent fetches: waiting on %s", moduleId)
 		s.loadingModulesMu.Unlock()
 
 		// wait on the signal
@@ -167,7 +167,7 @@ func (s *SandboxStore) loadModule(moduleId string) (*ActiveModule, error) {
 		}
 	}()
 
-	logging.Logger.Infof("Fetching module %s from external store", moduleId)
+	// logging.Logger.Infof("Fetching module %s from external store", moduleId)
 
 	// Give the loader a 5 second timeout
 	// the cancel function is deferred to avoid "context leaks"

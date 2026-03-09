@@ -4,24 +4,22 @@ import { WSEvent } from "./protocol";
 export function onMessage(event: WSEvent): void {
   const ctx = new Context();
 
-  debug("User " + event.connectionId + " called onMessage");
+  // debug("User " + event.connectionId + " called onMessage");
 
-  // let res = ctx.log("hello?");
-  // if (res.isError()) {
-  //   debug("log error: " + res.error);
-  // } else {
-  //   debug("log successful");
-  // }
+  const resp = ctx.fetch("http://google.com", "GET", "");
+  if (resp.isError()) {
+    abort("Fetch failed: " + resp.error);
+  }
 }
 
 export function onJoin(event: WSEvent): void {
-  debug("onJoin called!");
+  debug("User " + event.connectionId + " called onJoin");
 }
 
 export function onLeave(event: WSEvent): void {
-  debug("onLeave called!");
+  debug("User " + event.connectionId + " called onLeave");
 }
 
 export function onError(event: WSEvent): void {
-  debug("onError called!");
+  debug("User " + event.connectionId + " called onError");
 }
