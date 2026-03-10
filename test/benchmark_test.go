@@ -13,6 +13,7 @@ import (
 )
 
 const NUM_MODULES = 10
+const MODULE_DIFFERENCE = 3
 
 func dummyHandler(event *wasmevents.WASMEventInfo) (string, error) {
 	return "dummy", nil
@@ -44,7 +45,7 @@ func setupStore(tb testing.TB) *store.SandboxStore {
 		CleanupInterval:    5 * time.Second,
 		MaxIdleTime:        6 * time.Second,
 		MemoryLimitPages:   10,
-		MaxActiveModules:   NUM_MODULES - 1,
+		MaxActiveModules:   NUM_MODULES - MODULE_DIFFERENCE,
 		CloseOnContextDone: true,
 		HandlerMap: wasmevents.NewHandlerMap().
 			AddHandler(wasmevents.ABORT, abortHandler).
@@ -92,7 +93,7 @@ func BenchmarkSimpleSingleModule(b *testing.B) {
 	}
 }
 
-func BenchmarkSimpleModuleEviction(b *testing.B) {
+func BenchmarkSimpleMultipleModules(b *testing.B) {
 	store := setupStore(b)
 	ctx, cancel := context.WithCancel(b.Context())
 	defer cancel()
@@ -135,7 +136,7 @@ func BenchmarkSimpleModuleEviction(b *testing.B) {
 	close(abortChan)
 }
 
-func BenchmarkZipfWithModuleEviction(b *testing.B) {
+func BenchmarkZipf(b *testing.B) {
 	store := setupStore(b)
 	ctx, cancel := context.WithCancel(b.Context())
 	defer cancel()
@@ -149,50 +150,6 @@ func BenchmarkZipfWithModuleEviction(b *testing.B) {
 		Timestamp:    time.Now().UnixMilli(),
 	}
 	events := createNEvents(b, event, NUM_MODULES)
-
-	abortChan = make(chan string)
-	go func() {
-		for msg := range abortChan {
-			b.Logf("Abort called: %s\n", msg)
-			cancel()
-			return
-		}
-	}()
-
-	// use zipf for typical service access patterns
-	r := rand.New(rand.NewSource(42))
-	zipf := rand.NewZipf(r, 1.5, 1, uint64(len(events)-1))
-
-	for b.Loop() {
-		select {
-		case <-ctx.Done():
-			return
-		default:
-			i := zipf.Uint64()
-			err := store.ExecuteOnModule(ctx, events[i])
-			if err != nil {
-				b.Fatalf("Failed to execute on module %s: %v\n", events[i].InstanceId, err)
-			}
-		}
-	}
-
-	close(abortChan)
-}
-
-func BenchmarkZipfWithoutModuleEviction(b *testing.B) {
-	store := setupStore(b)
-	ctx, cancel := context.WithCancel(b.Context())
-	defer cancel()
-
-	event := wsevents.WSEventInfo{
-		ConnectionId: "bench-connection",
-		InstanceId:   "./modules/1.wasm",
-		RoomId:       "bench-room",
-		Payload:      "benchmark payload",
-		EventType:    wsevents.ON_MESSAGE,
-		Timestamp:    time.Now().UnixMilli(),
-	}
-	events := createNEvents(b, event, NUM_MODULES-1)
 
 	abortChan = make(chan string)
 	go func() {
