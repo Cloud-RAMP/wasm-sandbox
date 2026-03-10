@@ -7,7 +7,6 @@ import { onMessage, onJoin, onLeave, onError } from "./user";
 export function __onMessage(ptr: usize, len: usize): void {
   const buf = changetype<ArrayBuffer>(ptr);
   const event = decodeWSEvent(buf);
-  // const msg = String.UTF8.decodeUnsafe(ptr, len);
 
   onMessage(event);
 }
