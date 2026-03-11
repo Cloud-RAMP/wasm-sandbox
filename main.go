@@ -6,7 +6,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/Cloud-RAMP/wasm-sandbox/internal/store"
+	"github.com/Cloud-RAMP/wasm-sandbox/pkg/store"
 	wasmevents "github.com/Cloud-RAMP/wasm-sandbox/pkg/wasm-events"
 	wsevents "github.com/Cloud-RAMP/wasm-sandbox/pkg/ws-events"
 )

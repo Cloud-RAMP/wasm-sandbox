@@ -2,18 +2,13 @@ package test
 
 import (
 	"context"
-	"fmt"
-	"math/rand"
 	"testing"
 	"time"
 
-	"github.com/Cloud-RAMP/wasm-sandbox/internal/store"
+	"github.com/Cloud-RAMP/wasm-sandbox/pkg/store"
 	wasmevents "github.com/Cloud-RAMP/wasm-sandbox/pkg/wasm-events"
 	wsevents "github.com/Cloud-RAMP/wasm-sandbox/pkg/ws-events"
 )
-
-const NUM_MODULES = 10
-const MODULE_DIFFERENCE = 3
 
 func dummyHandler(event *wasmevents.WASMEventInfo) (string, error) {
 	return "dummy", nil
@@ -26,26 +21,13 @@ func abortHandler(event *wasmevents.WASMEventInfo) (string, error) {
 	return "", nil
 }
 
-func createNEvents(tb testing.TB, defaultEvent wsevents.WSEventInfo, n int) []*wsevents.WSEventInfo {
-	tb.Helper()
-	out := make([]*wsevents.WSEventInfo, 0)
-
-	for i := range n {
-		event := defaultEvent
-		event.InstanceId = fmt.Sprintf("./modules/%d.wasm", i+1)
-		out = append(out, &event)
-	}
-
-	return out
-}
-
 func setupStore(tb testing.TB) *store.SandboxStore {
 	tb.Helper()
 	store, err := store.NewSandboxStore(store.SandboxStoreCfg{
 		CleanupInterval:    5 * time.Second,
 		MaxIdleTime:        6 * time.Second,
 		MemoryLimitPages:   10,
-		MaxActiveModules:   NUM_MODULES - MODULE_DIFFERENCE,
+		MaxActiveModules:   3,
 		CloseOnContextDone: true,
 		HandlerMap: wasmevents.NewHandlerMap().
 			AddHandler(wasmevents.ABORT, abortHandler).
@@ -68,7 +50,8 @@ func setupStore(tb testing.TB) *store.SandboxStore {
 
 func BenchmarkSimpleSingleModule(b *testing.B) {
 	store := setupStore(b)
-	ctx := b.Context()
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	event := &wsevents.WSEventInfo{
 		ConnectionId: "bench-connection",
@@ -93,9 +76,9 @@ func BenchmarkSimpleSingleModule(b *testing.B) {
 	}
 }
 
-func BenchmarkSimpleMultipleModules(b *testing.B) {
+func BenchmarkSimpleModuleEviction(b *testing.B) {
 	store := setupStore(b)
-	ctx, cancel := context.WithCancel(b.Context())
+	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
 	event := wsevents.WSEventInfo{
@@ -106,7 +89,14 @@ func BenchmarkSimpleMultipleModules(b *testing.B) {
 		EventType:    wsevents.ON_MESSAGE,
 		Timestamp:    time.Now().UnixMilli(),
 	}
-	events := createNEvents(b, event, NUM_MODULES)
+	event2 := event
+	event2.InstanceId = "./modules/2.wasm"
+	event3 := event
+	event3.InstanceId = "./modules/3.wasm"
+	event4 := event
+	event4.InstanceId = "./modules/4.wasm"
+
+	events := []*wsevents.WSEventInfo{&event, &event2, &event3, &event4}
 
 	abortChan = make(chan string)
 	go func() {
@@ -130,50 +120,6 @@ func BenchmarkSimpleMultipleModules(b *testing.B) {
 				b.Fatalf("Failed to execute on module %s: %v\n", events[i%eventsLen].InstanceId, err)
 			}
 			i++
-		}
-	}
-
-	close(abortChan)
-}
-
-func BenchmarkZipf(b *testing.B) {
-	store := setupStore(b)
-	ctx, cancel := context.WithCancel(b.Context())
-	defer cancel()
-
-	event := wsevents.WSEventInfo{
-		ConnectionId: "bench-connection",
-		InstanceId:   "./modules/1.wasm",
-		RoomId:       "bench-room",
-		Payload:      "benchmark payload",
-		EventType:    wsevents.ON_MESSAGE,
-		Timestamp:    time.Now().UnixMilli(),
-	}
-	events := createNEvents(b, event, NUM_MODULES)
-
-	abortChan = make(chan string)
-	go func() {
-		for msg := range abortChan {
-			b.Logf("Abort called: %s\n", msg)
-			cancel()
-			return
-		}
-	}()
-
-	// use zipf for typical service access patterns
-	r := rand.New(rand.NewSource(5980))
-	zipf := rand.NewZipf(r, 1.5, 1, uint64(len(events)-1))
-
-	for b.Loop() {
-		select {
-		case <-ctx.Done():
-			return
-		default:
-			i := zipf.Uint64()
-			err := store.ExecuteOnModule(ctx, events[i])
-			if err != nil {
-				b.Fatalf("Failed to execute on module %s: %v\n", events[i].InstanceId, err)
-			}
 		}
 	}
 
