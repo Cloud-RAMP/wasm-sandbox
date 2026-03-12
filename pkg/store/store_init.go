@@ -2,9 +2,11 @@ package store
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	builder "github.com/Cloud-RAMP/wasm-sandbox/internal/host-builder"
+	"github.com/Cloud-RAMP/wasm-sandbox/internal/loader"
 	"github.com/tetratelabs/wazero"
 )
 
@@ -34,6 +36,12 @@ func NewSandboxStore(cfg SandboxStoreCfg) (*SandboxStore, error) {
 		runtime.Close(ctx)
 		return nil, err
 	}
+
+	// Set loader function, use error if not specified
+	if cfg.LoaderFunction == nil {
+		return nil, fmt.Errorf("No module loader function specified!")
+	}
+	loader.SetLoaderFunction(cfg.LoaderFunction)
 
 	store := &SandboxStore{
 		runtime:          runtime,

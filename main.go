@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/Cloud-RAMP/wasm-sandbox/internal/loader"
 	"github.com/Cloud-RAMP/wasm-sandbox/pkg/store"
 	wasmevents "github.com/Cloud-RAMP/wasm-sandbox/pkg/wasm-events"
 	wsevents "github.com/Cloud-RAMP/wasm-sandbox/pkg/ws-events"
@@ -43,6 +44,7 @@ func main() {
 			AddHandler(wasmevents.DEBUG, debugHandler).
 			AddHandler(wasmevents.GET_USERS, dummyHandler).
 			AddHandler(wasmevents.SEND_MESSAGE, dummyHandler),
+		LoaderFunction: loader.MockLoaderFunction,
 	})
 
 	if err != nil {

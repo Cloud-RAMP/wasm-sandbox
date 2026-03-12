@@ -67,6 +67,7 @@ type SandboxStoreCfg struct {
 	CleanupInterval    time.Duration
 	HandlerMap         *wasmevents.HandlerMap
 	Ctx                context.Context
+	LoaderFunction     loader.LoaderFunction
 }
 
 // Execute a function on a given module
