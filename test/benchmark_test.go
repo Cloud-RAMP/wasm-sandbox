@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Cloud-RAMP/wasm-sandbox/internal/loader"
 	"github.com/Cloud-RAMP/wasm-sandbox/pkg/store"
 	wasmevents "github.com/Cloud-RAMP/wasm-sandbox/pkg/wasm-events"
 	wsevents "github.com/Cloud-RAMP/wasm-sandbox/pkg/ws-events"
@@ -41,6 +42,7 @@ func setupStore(tb testing.TB) *store.SandboxStore {
 			AddHandler(wasmevents.GET_USERS, dummyHandler).
 			AddHandler(wasmevents.SEND_MESSAGE, dummyHandler).
 			AddHandler(wasmevents.FETCH, dummyHandler),
+		LoaderFunction: loader.MockLoaderFunction,
 	})
 	if err != nil {
 		tb.Fatalf("Failed to make sandbox store: %v", err)

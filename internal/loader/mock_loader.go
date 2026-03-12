@@ -6,10 +6,6 @@ import (
 	"os"
 )
 
-func init() {
-	SetLoaderFunction(MockLoaderFunction)
-}
-
 // To be used in testing
 func MockLoaderFunction(ctx context.Context, moduleId string) ([]byte, error) {
 	// time.Sleep(1 * time.Second) // simulated delay (longer than probably normal)
