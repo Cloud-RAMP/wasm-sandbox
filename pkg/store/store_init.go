@@ -5,6 +5,7 @@ import (
 	"time"
 
 	builder "github.com/Cloud-RAMP/wasm-sandbox/internal/host-builder"
+	"github.com/Cloud-RAMP/wasm-sandbox/pkg/loader"
 	"github.com/tetratelabs/wazero"
 )
 
@@ -44,6 +45,8 @@ func NewSandboxStore(cfg SandboxStoreCfg) (*SandboxStore, error) {
 		maxActiveModules: defaultValue(cfg.MaxActiveModules, 0, 25),
 		maxExecutionTime: defaultValue(cfg.MaxExecutionTime, 0, 5*time.Second),
 	}
+
+	loader.SetLoaderFunction(cfg.LoaderFunction)
 
 	// auto-clean up modules if cleanup interval and max idle time are defined
 	if cfg.CleanupInterval != 0 && cfg.MaxIdleTime != 0 {

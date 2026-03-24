@@ -7,9 +7,9 @@ import (
 	"time"
 
 	"github.com/Cloud-RAMP/wasm-sandbox/internal/asmscript"
-	"github.com/Cloud-RAMP/wasm-sandbox/internal/loader"
 	"github.com/Cloud-RAMP/wasm-sandbox/internal/logging"
 	modulelocks "github.com/Cloud-RAMP/wasm-sandbox/internal/module-locks"
+	"github.com/Cloud-RAMP/wasm-sandbox/pkg/loader"
 	wasmevents "github.com/Cloud-RAMP/wasm-sandbox/pkg/wasm-events"
 	wsevents "github.com/Cloud-RAMP/wasm-sandbox/pkg/ws-events"
 	"github.com/tetratelabs/wazero"
@@ -67,6 +67,7 @@ type SandboxStoreCfg struct {
 	CleanupInterval    time.Duration
 	HandlerMap         *wasmevents.HandlerMap
 	Ctx                context.Context
+	LoaderFunction     loader.LoaderFunction
 }
 
 // Execute a function on a given module
