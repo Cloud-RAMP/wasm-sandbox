@@ -24,7 +24,7 @@ func abortHandler(event *wasmevents.WASMEventInfo) (string, error) {
 
 func setupStore(tb testing.TB) *store.SandboxStore {
 	tb.Helper()
-	store, err := store.NewSandboxStore(store.SandboxStoreCfg{
+	store, err := store.NewSandboxStore(tb.Context(), store.SandboxStoreCfg{
 		CleanupInterval:    5 * time.Second,
 		MaxIdleTime:        6 * time.Second,
 		MemoryLimitPages:   10,
@@ -52,8 +52,7 @@ func setupStore(tb testing.TB) *store.SandboxStore {
 
 func BenchmarkSimpleSingleModule(b *testing.B) {
 	store := setupStore(b)
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
+	ctx := b.Context()
 
 	event := &wsevents.WSEventInfo{
 		ConnectionId: "bench-connection",

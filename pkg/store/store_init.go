@@ -19,9 +19,7 @@ func defaultValue[T comparable](original T, zeroCase T, defaultValue T) T {
 }
 
 // Will probably need to pass a ctx into this later, or limit execution time somehow
-func NewSandboxStore(cfg SandboxStoreCfg) (*SandboxStore, error) {
-	ctx := context.Background()
-
+func NewSandboxStore(ctx context.Context, cfg SandboxStoreCfg) (*SandboxStore, error) {
 	memPages := defaultValue(cfg.MemoryLimitPages, 0, 10)
 
 	// Create runtime with limits
@@ -31,7 +29,7 @@ func NewSandboxStore(cfg SandboxStoreCfg) (*SandboxStore, error) {
 			WithCloseOnContextDone(cfg.CloseOnContextDone))
 
 	// Build host module once
-	hostModule, err := builder.BuildHostModule(runtime, cfg.HandlerMap)
+	hostModule, err := builder.BuildHostModule(ctx, runtime, cfg.HandlerMap)
 	if err != nil {
 		runtime.Close(ctx)
 		return nil, err

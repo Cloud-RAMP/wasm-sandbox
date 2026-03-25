@@ -9,19 +9,8 @@ import (
 	"github.com/tetratelabs/wazero/api"
 )
 
-var hostModuleBuilder wazero.HostModuleBuilder
-var handlerMap *wasmevents.HandlerMap
-
-// type this later
-// func addFunctionToHost(handlerFunc interface{}, eventType wasmevents.WASMEventType) {
-// 	hostModuleBuilder.NewFunctionBuilder().
-// 		WithFunc(handlerFunc(handlerMap)).
-// 		Export(eventType.String())
-// }
-
-func BuildHostModule(runtime wazero.Runtime, _handlerMap *wasmevents.HandlerMap) (api.Module, error) {
-	hostModuleBuilder = runtime.NewHostModuleBuilder("env")
-	handlerMap = _handlerMap
+func BuildHostModule(ctx context.Context, runtime wazero.Runtime, handlerMap *wasmevents.HandlerMap) (api.Module, error) {
+	hostModuleBuilder := runtime.NewHostModuleBuilder("env")
 
 	hostModuleBuilder.NewFunctionBuilder().
 		WithFunc(abortHandler(handlerMap)).
@@ -77,5 +66,5 @@ func BuildHostModule(runtime wazero.Runtime, _handlerMap *wasmevents.HandlerMap)
 		WithFunc(fetchHandler(handlerMap)).
 		Export(wasmevents.FETCH.String())
 
-	return hostModuleBuilder.Instantiate(context.Background())
+	return hostModuleBuilder.Instantiate(ctx)
 }

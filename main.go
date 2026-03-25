@@ -28,7 +28,7 @@ func debugHandler(event *wasmevents.WASMEventInfo) (string, error) {
 func main() {
 	ctx := context.Background()
 
-	store, err := store.NewSandboxStore(store.SandboxStoreCfg{
+	store, err := store.NewSandboxStore(context.Background(), store.SandboxStoreCfg{
 		CleanupInterval:    5 * time.Second,
 		MaxIdleTime:        6 * time.Second,
 		MemoryLimitPages:   10,
