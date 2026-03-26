@@ -2,6 +2,7 @@ package hostbuilder
 
 import (
 	"context"
+	"strings"
 
 	"github.com/Cloud-RAMP/wasm-sandbox/internal/asmscript"
 	"github.com/Cloud-RAMP/wasm-sandbox/internal/logging"
@@ -21,10 +22,11 @@ func getUsersHandler(handlerMap *wasmevents.HandlerMap) any {
 		resp, err := handlerMap.CallHandler(event)
 		if err != nil {
 			logging.Logger.Errorf("Failed to call handler in %s: %v", wasmevents.GET_USERS.String(), err)
-			return writeErrorMessage(getModuleContext(ctx, mod), EXTERNAL_HANDLER_ERR)
+			return writeErrorMessage(modCtx, EXTERNAL_HANDLER_ERR)
 		}
 
-		ptr, _, err := asmscript.CreateASString(modCtx, resp)
+		respSplit := strings.Split(resp, ",")
+		ptr, _, err := asmscript.WriteArray(modCtx, respSplit)
 		if err != nil {
 			logging.Logger.Errorf("Failed to create string in WASM memory in getUsersHandler: %v", err)
 			return writeErrorMessage(modCtx, CREATE_AS_STRING_ERR)
