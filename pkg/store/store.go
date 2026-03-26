@@ -98,6 +98,8 @@ func (s *SandboxStore) ExecuteOnModule(ctx context.Context, wsEvent *wsevents.WS
 	modulelocks.Lock(wsEvent.InstanceId)
 	defer modulelocks.Unlock(wsEvent.InstanceId)
 
+	active.lastUsed = time.Now()
+
 	// write the information of the event in module memory so they can read it
 	ptr, memLen, err := asmscript.WriteWSEvent(&asmscript.ModuleContext{
 		Module: active.module,
