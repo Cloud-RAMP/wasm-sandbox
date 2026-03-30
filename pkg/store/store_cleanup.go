@@ -4,7 +4,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/Cloud-RAMP/wasm-sandbox/internal/logging"
 	modulelocks "github.com/Cloud-RAMP/wasm-sandbox/internal/module-locks"
 )
 
@@ -13,8 +12,6 @@ func (s *SandboxStore) Close(ctx context.Context) error {
 	if ctx == nil {
 		ctx = context.Background()
 	}
-
-	logging.Logger.Info("Closing sandbox store")
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
@@ -69,7 +66,6 @@ func (s *SandboxStore) cleanupIdleModules() {
 			active.wg.Wait()
 			modulelocks.Delete(id)
 			active.module.Close(context.Background())
-			logging.Logger.Infof("Removing inactive module %s", id)
 		}
 	}
 }

@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/Cloud-RAMP/wasm-sandbox/internal/asmscript"
-	"github.com/Cloud-RAMP/wasm-sandbox/internal/logging"
 	modulelocks "github.com/Cloud-RAMP/wasm-sandbox/internal/module-locks"
 	"github.com/Cloud-RAMP/wasm-sandbox/pkg/loader"
 	wasmevents "github.com/Cloud-RAMP/wasm-sandbox/pkg/wasm-events"
@@ -75,7 +74,6 @@ type SandboxStoreCfg struct {
 // The event will be handled by whatever custom event handler the user has set up
 func (s *SandboxStore) ExecuteOnModule(ctx context.Context, wsEvent *wsevents.WSEventInfo) error {
 	if !wsEvent.EventType.Valid() {
-		logging.Logger.Warn("Execute called with invalid event type")
 		return fmt.Errorf("Invalid WS event type")
 	}
 
@@ -85,7 +83,6 @@ func (s *SandboxStore) ExecuteOnModule(ctx context.Context, wsEvent *wsevents.WS
 	}
 
 	if active == nil {
-		logging.Logger.Error("Active module is nil after loading")
 		return fmt.Errorf("Active is nil after loading")
 	}
 
@@ -179,7 +176,6 @@ func (s *SandboxStore) loadModule(moduleId string) (*ActiveModule, error) {
 
 	module, err := loader.Load(ctx, s.runtime, moduleId)
 	if err != nil {
-		logging.Logger.Errorf("Failed to load module %s from external store: %v", moduleId, err)
 		return nil, err
 	}
 

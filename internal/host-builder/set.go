@@ -3,7 +3,6 @@ package hostbuilder
 import (
 	"context"
 
-	"github.com/Cloud-RAMP/wasm-sandbox/internal/logging"
 	wasmevents "github.com/Cloud-RAMP/wasm-sandbox/pkg/wasm-events"
 	"github.com/tetratelabs/wazero/api"
 )
@@ -29,13 +28,11 @@ func setHandler(handlerMap *wasmevents.HandlerMap, setType wasmevents.WASMEventT
 
 		event, err := getWASMEvent(ctx, setType, key, val)
 		if event == nil {
-			logging.Logger.Errorf("Failed to create WASM event in handler %s: %v", setType.String(), err)
 			return writeErrorMessage(getModuleContext(ctx, mod), GET_WASM_EVENT_ERR)
 		}
 
 		_, err = handlerMap.CallHandler(event)
 		if err != nil {
-			logging.Logger.Errorf("Failed to execute handler %s: %v", setType.String(), err)
 			return writeErrorMessage(getModuleContext(ctx, mod), EXTERNAL_HANDLER_ERR)
 		}
 

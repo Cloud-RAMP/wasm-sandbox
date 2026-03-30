@@ -4,7 +4,6 @@ import (
 	"context"
 
 	"github.com/Cloud-RAMP/wasm-sandbox/internal/asmscript"
-	"github.com/Cloud-RAMP/wasm-sandbox/internal/logging"
 	wasmevents "github.com/Cloud-RAMP/wasm-sandbox/pkg/wasm-events"
 	"github.com/tetratelabs/wazero/api"
 )
@@ -23,14 +22,12 @@ func getHandler(handlerMap *wasmevents.HandlerMap, getType wasmevents.WASMEventT
 
 		event, err := getWASMEvent(ctx, getType, string(bytes))
 		if event == nil {
-			logging.Logger.Errorf("Failed to create WASM event in handler %s: %v", getType.String(), err)
 			return writeErrorMessage(getModuleContext(ctx, mod), GET_WASM_EVENT_ERR)
 		}
 
 		modCtx := getModuleContext(ctx, mod)
 		val, err := handlerMap.CallHandler(event)
 		if err != nil {
-			logging.Logger.Errorf("Failed to call handler in %s: %v", getType.String(), err)
 			return writeErrorMessage(getModuleContext(ctx, mod), EXTERNAL_HANDLER_ERR)
 		}
 
@@ -39,7 +36,6 @@ func getHandler(handlerMap *wasmevents.HandlerMap, getType wasmevents.WASMEventT
 			val,
 		)
 		if err != nil {
-			logging.Logger.Errorf("Failed to create string in WASM memory in getHandler: %v", err)
 			return writeErrorMessage(modCtx, CREATE_AS_STRING_ERR)
 		}
 
