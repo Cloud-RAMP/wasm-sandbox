@@ -34,8 +34,10 @@ func setupStore(tb testing.TB) *store.SandboxStore {
 			AddHandler(wasmevents.ABORT, abortHandler).
 			AddHandler(wasmevents.GET, dummyHandler).
 			AddHandler(wasmevents.SET, dummyHandler).
+			AddHandler(wasmevents.DEL, dummyHandler).
 			AddHandler(wasmevents.DB_GET, dummyHandler).
 			AddHandler(wasmevents.DB_SET, dummyHandler).
+			AddHandler(wasmevents.DB_DEL, dummyHandler).
 			AddHandler(wasmevents.BROADCAST, dummyHandler).
 			AddHandler(wasmevents.LOG, dummyHandler).
 			AddHandler(wasmevents.DEBUG, dummyHandler).

@@ -36,8 +36,10 @@ func main() {
 		HandlerMap: wasmevents.NewHandlerMap().
 			AddHandler(wasmevents.GET, dummyHandler).
 			AddHandler(wasmevents.SET, dummyHandler).
+			AddHandler(wasmevents.DEL, dummyHandler).
 			AddHandler(wasmevents.DB_GET, dummyHandler).
 			AddHandler(wasmevents.DB_SET, dummyHandler).
+			AddHandler(wasmevents.DB_DEL, dummyHandler).
 			AddHandler(wasmevents.BROADCAST, dummyHandler).
 			AddHandler(wasmevents.FETCH, dummyHandler).
 			AddHandler(wasmevents.LOG, dummyHandler).
