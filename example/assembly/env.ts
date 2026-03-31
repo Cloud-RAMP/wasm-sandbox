@@ -7,12 +7,20 @@ export declare function _set(keyPtr: usize, keyLen: usize, valPtr: usize, valLen
 export declare function _get(keyPtr: usize, keyLen: usize): usize;
 
 //@ts-ignore
+@external("env", "del")
+export declare function _del(keyPtr: usize, keyLen: usize): usize;
+
+//@ts-ignore
 @external("env", "dbSet")
 export declare function _dbSet(keyPtr: usize, keyLen: usize, valPtr: usize, valLen: usize): usize;
 
 //@ts-ignore
 @external("env", "dbGet")
 export declare function _dbGet(keyPtr: usize, keyLen: usize): usize;
+
+//@ts-ignore
+@external("env", "dbDel")
+export declare function _dbDel(keyPtr: usize, keyLen: usize): usize;
 
 //@ts-ignore
 @external("env", "log")
