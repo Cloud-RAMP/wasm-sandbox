@@ -25,11 +25,17 @@ const (
 	// Same question as above
 	GET
 
+	// Delete a key in the in-memory KV store
+	DEL
+
 	// Set a key/value in the persistent storage
 	DB_SET
 
 	// Get a key/value in the persistent storage
 	DB_GET
+
+	// Delete key in persistent storage
+	DB_DEL
 
 	// Log something (in the user application)
 	LOG
@@ -70,8 +76,10 @@ var eventStrings = [...]string{
 	"broadcast",
 	"set",
 	"get",
+	"del",
 	"dbSet",
 	"dbGet",
+	"dbDel",
 	"log",
 	"debug",
 	"getUsers",
@@ -104,6 +112,7 @@ func (m *HandlerMap) CallHandler(event *WASMEventInfo) (string, error) {
 	}
 
 	// give up lock control while some external event is called
+	// (this may cause concurrency issues?)
 	modulelocks.Unlock(event.InstanceId)
 	res, err := h(event)
 	modulelocks.Lock(event.InstanceId)

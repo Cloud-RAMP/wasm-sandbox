@@ -41,6 +41,16 @@ func BuildHostModule(ctx context.Context, runtime wazero.Runtime, handlerMap *wa
 		WithFunc(getHandler(handlerMap, wasmevents.DB_GET)).
 		Export(wasmevents.DB_GET.String())
 
+	// DEL function
+	hostModuleBuilder.NewFunctionBuilder().
+		WithFunc(delHandler(handlerMap)).
+		Export(wasmevents.DEL.String())
+
+	// DB_DEL function
+	hostModuleBuilder.NewFunctionBuilder().
+		WithFunc(dbDelHandler(handlerMap)).
+		Export(wasmevents.DB_DEL.String())
+
 	// LOG
 	hostModuleBuilder.NewFunctionBuilder().
 		WithFunc(logHandler(handlerMap)).

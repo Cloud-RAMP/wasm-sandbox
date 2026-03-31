@@ -37,6 +37,11 @@ class Store {
     const valPtr = env._get(to_usize(key), key.length);
     return get_result(valPtr);
   }
+
+  del(key: string): Status {
+    const valPtr = env._del(to_usize(key), key.length);
+    return get_status(valPtr);
+  }
 }
 
 class DB {
@@ -48,6 +53,11 @@ class DB {
   get(key: string): Result<string> {    
     const valPtr = env._dbGet(to_usize(key), key.length);
     return get_result(valPtr);
+  }
+
+  del(key: string): Status {
+    const valPtr = env._dbDel(to_usize(key), key.length);
+    return get_status(valPtr);
   }
 }
 
