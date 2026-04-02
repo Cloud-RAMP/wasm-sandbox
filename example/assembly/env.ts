@@ -46,7 +46,6 @@ export declare function _sendMessage(userPtr: usize, userLen: usize, msgPtr: usi
 @external("env", "closeConnection")
 export declare function _closeConnection(targetPtr: usize, targetLen: usize): usize;
 
-
 //@ts-ignore
 @external("env", "fetch")
 export declare function _fetch(urlPtr: usize, urlLen: usize, methodPtr: usize, methodLen: usize, bodyPtr: usize, bodyLen: usize): usize;

@@ -73,7 +73,7 @@ func BuildHostModule(ctx context.Context, runtime wazero.Runtime, handlerMap *wa
 
 	// CLOSE_CONNECTION
 	hostModuleBuilder.NewFunctionBuilder().
-		WithFunc(sendMessageHandler(handlerMap)).
+		WithFunc(closeConnectionHanlder(handlerMap)).
 		Export(wasmevents.CLOSE_CONNECTION.String())
 
 	// FETCH
