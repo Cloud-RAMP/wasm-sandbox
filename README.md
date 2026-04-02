@@ -41,9 +41,14 @@ These are APIs that we should provide to the programmer writing the code.
 * Write to durable storage (probably firebase in our case)
 
 
-### Working on
+### Add new command process
 
-* AssemblyScript SDK (could publish as a node module)
-  * How to have users write code that we can easily package and compile to WASM (probably dependent on publishing the SDK)
-* How to uniquely identify users
-    * This will likely be done at the WebSocket server level, we will simply need to use that information to operate (make it a function parameter)
+* Go code modifications
+  * Add it to the `pkg/wasm-events/wasm-events.go` file, both in the enum and in the "eventStrings" map
+  * Create a handler function in `internal/host-builder/{file}.go`
+  * Add the handler to the host module builder in `internal/host-builder/builder.go`
+  * Register the handler in all places that the sandbox is instantiated
+    * `test/benchmark_test.go`, `main.go`
+* TS code modifications
+  * Add the user-facing function to the sdk (`example/assembly/sdk.ts`)
+  * Add the underlying function to `example/assembly/env.ts`
