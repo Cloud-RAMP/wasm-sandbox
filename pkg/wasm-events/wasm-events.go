@@ -86,8 +86,8 @@ var eventStrings = [...]string{
 	"log",
 	"debug",
 	"getUsers",
-	"closeConnection",
 	"sendMessage",
+	"closeConnection",
 	"fetch",
 }
 
