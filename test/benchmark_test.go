@@ -2,6 +2,8 @@ package test
 
 import (
 	"context"
+	"fmt"
+	"math/rand"
 	"testing"
 	"time"
 
@@ -28,7 +30,7 @@ func setupStore(tb testing.TB) *store.SandboxStore {
 		CleanupInterval:    5 * time.Second,
 		MaxIdleTime:        6 * time.Second,
 		MemoryLimitPages:   10,
-		MaxActiveModules:   3,
+		MaxActiveModules:   10,
 		CloseOnContextDone: true,
 		HandlerMap: wasmevents.NewHandlerMap().
 			AddHandler(wasmevents.ABORT, abortHandler).
@@ -43,6 +45,7 @@ func setupStore(tb testing.TB) *store.SandboxStore {
 			AddHandler(wasmevents.DEBUG, dummyHandler).
 			AddHandler(wasmevents.GET_USERS, dummyHandler).
 			AddHandler(wasmevents.SEND_MESSAGE, dummyHandler).
+			AddHandler(wasmevents.CLOSE_CONNECTION, dummyHandler).
 			AddHandler(wasmevents.FETCH, dummyHandler),
 		LoaderFunction: loader.MockLoaderFunction,
 	})
@@ -79,6 +82,8 @@ func BenchmarkSimpleSingleModule(b *testing.B) {
 	}
 }
 
+const NUM_MODULES = 10
+
 func BenchmarkSimpleModuleEviction(b *testing.B) {
 	store := setupStore(b)
 	ctx, cancel := context.WithCancel(context.Background())
@@ -92,14 +97,13 @@ func BenchmarkSimpleModuleEviction(b *testing.B) {
 		EventType:    wsevents.ON_MESSAGE,
 		Timestamp:    time.Now().UnixMilli(),
 	}
-	event2 := event
-	event2.InstanceId = "./modules/2.wasm"
-	event3 := event
-	event3.InstanceId = "./modules/3.wasm"
-	event4 := event
-	event4.InstanceId = "./modules/4.wasm"
-
-	events := []*wsevents.WSEventInfo{&event, &event2, &event3, &event4}
+	events := make([]*wsevents.WSEventInfo, 0)
+	events = append(events, &event)
+	for i := range NUM_MODULES - 1 {
+		e := event
+		e.InstanceId = fmt.Sprintf("./modules/%d.wasm", i+2)
+		events = append(events, &e)
+	}
 
 	abortChan = make(chan string)
 	go func() {
@@ -123,6 +127,56 @@ func BenchmarkSimpleModuleEviction(b *testing.B) {
 				b.Fatalf("Failed to execute on module %s: %v\n", events[i%eventsLen].InstanceId, err)
 			}
 			i++
+		}
+	}
+
+	close(abortChan)
+}
+
+func BenchmarkZipf(b *testing.B) {
+	store := setupStore(b)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	event := wsevents.WSEventInfo{
+		ConnectionId: "bench-connection",
+		InstanceId:   "./modules/1.wasm",
+		RoomId:       "bench-room",
+		Payload:      "benchmark payload",
+		EventType:    wsevents.ON_MESSAGE,
+		Timestamp:    time.Now().UnixMilli(),
+	}
+	events := make([]*wsevents.WSEventInfo, 0)
+	events = append(events, &event)
+	for i := range NUM_MODULES - 1 {
+		e := event
+		e.InstanceId = fmt.Sprintf("./modules/%d.wasm", i+2)
+		events = append(events, &e)
+	}
+
+	abortChan = make(chan string)
+	go func() {
+		for msg := range abortChan {
+			b.Logf("Abort called: %s\n", msg)
+			cancel()
+			return
+		}
+	}()
+
+	rng := rand.New(rand.NewSource(42)) // deterministic benchmark distribution
+	zipf := rand.NewZipf(rng, 1.2, 1, uint64(len(events)-1))
+
+	// Testing loop
+	for b.Loop() {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			idx := int(zipf.Uint64())
+			err := store.ExecuteOnModule(ctx, events[idx])
+			if err != nil {
+				b.Fatalf("Failed to execute on module %s: %v\n", events[idx].InstanceId, err)
+			}
 		}
 	}
 

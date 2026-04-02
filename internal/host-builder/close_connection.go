@@ -7,23 +7,24 @@ import (
 	"github.com/tetratelabs/wazero/api"
 )
 
-func delHandler(handlerMap *wasmevents.HandlerMap) any {
-	return func(ctx context.Context, mod api.Module, keyPtr uint32, keyLen uint32) uint32 {
+func closeConnectionHanlder(handlerMap *wasmevents.HandlerMap) any {
+	return func(ctx context.Context, mod api.Module, userPtr uint32, userLen uint32) uint32 {
 		mem := mod.Memory()
 		if mem == nil {
 			return writeErrorMessage(getModuleContext(ctx, mod), MOD_MEMORY_ERR)
 		}
 
-		bytes, ok := mem.Read(keyPtr, keyLen)
+		bytes, ok := mem.Read(userPtr, userLen)
 		if !ok {
 			return writeErrorMessage(getModuleContext(ctx, mod), MEM_READ_ERR)
 		}
-		info := string(bytes)
+		user := string(bytes)
 
-		event, err := getWASMEvent(ctx, wasmevents.DEL, info)
+		event, err := getWASMEvent(ctx, wasmevents.CLOSE_CONNECTION, user)
 		if event == nil {
 			return writeErrorMessage(getModuleContext(ctx, mod), GET_WASM_EVENT_ERR)
 		}
+
 		_, err = handlerMap.CallHandler(event)
 		if err != nil {
 			return writeErrorMessage(getModuleContext(ctx, mod), EXTERNAL_HANDLER_ERR)

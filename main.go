@@ -45,7 +45,8 @@ func main() {
 			AddHandler(wasmevents.LOG, dummyHandler).
 			AddHandler(wasmevents.DEBUG, debugHandler).
 			AddHandler(wasmevents.GET_USERS, dummyHandler).
-			AddHandler(wasmevents.SEND_MESSAGE, dummyHandler),
+			AddHandler(wasmevents.SEND_MESSAGE, dummyHandler).
+			AddHandler(wasmevents.CLOSE_CONNECTION, dummyHandler),
 		LoaderFunction: loader.MockLoaderFunction,
 	})
 

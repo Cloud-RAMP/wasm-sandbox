@@ -8,13 +8,13 @@ import (
 )
 
 func dbDelHandler(handlerMap *wasmevents.HandlerMap) any {
-	return func(ctx context.Context, mod api.Module, strPtr uint32, strLen uint32) uint32 {
+	return func(ctx context.Context, mod api.Module, keyPtr uint32, keyLen uint32) uint32 {
 		mem := mod.Memory()
 		if mem == nil {
 			return writeErrorMessage(getModuleContext(ctx, mod), MOD_MEMORY_ERR)
 		}
 
-		bytes, ok := mem.Read(strPtr, strLen)
+		bytes, ok := mem.Read(keyPtr, keyLen)
 		if !ok {
 			return writeErrorMessage(getModuleContext(ctx, mod), MEM_READ_ERR)
 		}

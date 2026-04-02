@@ -80,4 +80,9 @@ class Room {
     const errPtr = env._sendMessage(to_usize(recipient), recipient.length, to_usize(message), message.length);
     return get_status(errPtr);
   }
+
+  closeConnection(target: string): Status {
+    const errPtr = env._closeConnection(to_usize(target), target.length);
+    return get_status(errPtr);
+  }
 }

@@ -49,6 +49,9 @@ const (
 	// Send a message to a specific user
 	SEND_MESSAGE
 
+	// close a target user's connection
+	CLOSE_CONNECTION
+
 	// Send an HTTP request to a given URL with a request type and body
 	FETCH
 )
@@ -83,6 +86,7 @@ var eventStrings = [...]string{
 	"log",
 	"debug",
 	"getUsers",
+	"closeConnection",
 	"sendMessage",
 	"fetch",
 }
