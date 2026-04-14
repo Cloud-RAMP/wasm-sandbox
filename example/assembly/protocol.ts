@@ -1,7 +1,5 @@
 // AssemblyScript doesn't seem to allow for object interfaces so we need to use a class
 
-import { debug } from "./sdk";
-
 /**
  * This class defines the information that is passed in wich each WS request.
  * 
@@ -21,7 +19,20 @@ export class WSEvent {
   timestamp: number = 0;
 }
 
-// The result class will have either a data item or an error
+/**
+ * The "Result" class is used when a method has a return value,
+ * but may also error. It is inspired by the similarly named type in Rust.
+ * 
+ * Example usage:
+ * ```Typescript
+ * const result: Result = someAsyncOperation();
+ * if (result.isError()) {
+ *     console.log("Error on async operation! " + result.error);
+ * } else {
+ *     consooe.log("Successful operation, data is: " + result.data);
+ * }
+ * ```
+ */
 export class Result<T> {
     data: T;
     error: string;
@@ -36,7 +47,18 @@ export class Result<T> {
     }
 }
 
-// The status class has either an error or absence of an error
+/**
+ * The "Status" class is used when a method has no return value,
+ * but we want to know the status of the operation.
+ * 
+ * Example usage:
+ * ```Typescript
+ * const status: Status = someAsyncOperation();
+ * if (status.isError()) {
+ *     console.log("Error on async operation! " + status.error);
+ * }
+ * ```
+ */
 export class Status {
     error: string;
 
@@ -65,7 +87,6 @@ export function decodeStringArray(buf: ArrayBuffer): Result<string[]> {
         const len = load<i32>(addr - 4);
         const errMsg = String.UTF16.decodeUnsafe(addr + 2, len - 2);
 
-        // figure out how to get the error text in here
         return new Result([], errMsg);
     }
 

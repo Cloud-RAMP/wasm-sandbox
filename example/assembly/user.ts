@@ -9,24 +9,30 @@ export function onJoin(event: WSEvent): void {
   debug("User " + event.connectionId + " called onJoin");
 
   const ctx = new Context();
-  const usersResp = ctx.room.getUsers();
-  if (usersResp.isError()) {
-    debug("Failed to fetch users: " + usersResp.error);
+  const setRes = ctx.db.set("userId", event.connectionId);
+  if (setRes.isError()) {
+    debug("Error setting userId: " + setRes.error);
     return;
   }
 
-  // loop through all users and close connections that aren't ours
-  const users = usersResp.data;
-  for (let i = 0; i < users.length; i++) {
-    const user = users[i];
-    if (user != event.connectionId) {
-      ctx.room.closeConnection(user);
-    }
+  const getRes = ctx.db.get("userId");
+  if (getRes.isError()) {
+    debug("Error getting userId: " + getRes.error);
+    return;
   }
+
+  debug("User ID fetched from database: " + getRes.data);
 }
 
 export function onLeave(event: WSEvent): void {
   debug("User " + event.connectionId + " called onLeave");
+
+  const ctx = new Context();
+  const delRes = ctx.db.del("userId");
+  if (delRes.isError()) {
+    debug("Error setting userId: " + delRes.error);
+    return;
+  }
 }
 
 export function onError(event: WSEvent): void {
