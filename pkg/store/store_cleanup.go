@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"log/slog"
 	"time"
 
 	modulelocks "github.com/Cloud-RAMP/wasm-sandbox/internal/module-locks"
@@ -62,6 +63,7 @@ func (s *SandboxStore) cleanupIdleModules() {
 
 	for id, active := range s.activeModules {
 		if time.Since(active.lastUsed) > s.maxIdleTime {
+			slog.Info("Removing idle store", "storeId", id)
 			delete(s.activeModules, id)
 			active.wg.Wait()
 			modulelocks.Delete(id)

@@ -30,7 +30,7 @@ func setupStore(tb testing.TB) *store.SandboxStore {
 		CleanupInterval:    5 * time.Second,
 		MaxIdleTime:        6 * time.Second,
 		MemoryLimitPages:   10,
-		MaxActiveModules:   10,
+		MaxActiveModules:   5,
 		CloseOnContextDone: true,
 		HandlerMap: wasmevents.NewHandlerMap().
 			AddHandler(wasmevents.ABORT, abortHandler).
@@ -82,9 +82,58 @@ func BenchmarkSimpleSingleModule(b *testing.B) {
 	}
 }
 
-const NUM_MODULES = 10
+const NUM_MODULES = 6
 
 func BenchmarkSimpleModuleEviction(b *testing.B) {
+	store := setupStore(b)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	event := wsevents.WSEventInfo{
+		ConnectionId: "bench-connection",
+		InstanceId:   "./modules/1.wasm",
+		RoomId:       "bench-room",
+		Payload:      "benchmark payload",
+		EventType:    wsevents.ON_MESSAGE,
+		Timestamp:    time.Now().UnixMilli(),
+	}
+	events := make([]*wsevents.WSEventInfo, 0)
+	events = append(events, &event)
+	for i := range NUM_MODULES - 1 {
+		e := event
+		e.InstanceId = fmt.Sprintf("./modules/%d.wasm", i+2)
+		events = append(events, &e)
+	}
+
+	abortChan = make(chan string)
+	go func() {
+		for msg := range abortChan {
+			b.Logf("Abort called: %s\n", msg)
+			cancel()
+			return
+		}
+	}()
+
+	// Testing loop
+	i := 0
+	eventsLen := len(events)
+	for b.Loop() {
+		select {
+		case <-ctx.Done():
+			return
+		default:
+			err := store.ExecuteOnModule(ctx, events[i%eventsLen])
+			if err != nil {
+				b.Fatalf("Failed to execute on module %s: %v\n", events[i%eventsLen].InstanceId, err)
+			}
+			i++
+		}
+	}
+
+	close(abortChan)
+}
+
+func BenchmarkMultipleModulesNoEviction(b *testing.B) {
 	store := setupStore(b)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
