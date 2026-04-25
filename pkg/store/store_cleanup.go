@@ -40,6 +40,7 @@ func (mod *ActiveModule) Close(poolSize uint8) {
 		inst.Close(context.Background())
 	}
 	mod.compiled.Close(context.Background())
+	close(mod.instances)
 }
 
 // Evict the least recently used module from the cache
