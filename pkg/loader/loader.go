@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/tetratelabs/wazero"
-	"github.com/tetratelabs/wazero/api"
 )
 
 type LoaderFunction func(context.Context, string) ([]byte, error)
@@ -17,22 +16,20 @@ func SetLoaderFunction(function LoaderFunction) {
 	loader = function
 }
 
-func Load(ctx context.Context, runtime wazero.Runtime, moduleId string) (api.Module, error) {
+func LoadCompiled(ctx context.Context, runtime wazero.Runtime, moduleId string) (wazero.CompiledModule, error) {
 	if loader == nil {
 		return nil, fmt.Errorf("Loader function is not defined!")
 	}
-
-	// logging.Logger.Infof("Loading module %s from external store", moduleId)
 
 	bytes, err := loader(ctx, moduleId)
 	if err != nil {
 		return nil, err
 	}
 
-	module, err := runtime.Instantiate(ctx, bytes)
+	compiled, err := runtime.CompileModule(ctx, bytes)
 	if err != nil {
 		return nil, err
 	}
 
-	return module, nil
+	return compiled, nil
 }

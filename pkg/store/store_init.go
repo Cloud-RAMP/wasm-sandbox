@@ -49,6 +49,7 @@ func NewSandboxStore(ctx context.Context, cfg SandboxStoreCfg) (*SandboxStore, e
 		loadingModules:   make(map[string]chan struct{}),
 		maxActiveModules: defaultValue(cfg.MaxActiveModules, 0, 25),
 		maxExecutionTime: defaultValue(cfg.MaxExecutionTime, 0, 5*time.Second),
+		poolSize:         defaultValue(cfg.PoolSize, 0, 5),
 	}
 
 	loader.SetLoaderFunction(cfg.LoaderFunction)
