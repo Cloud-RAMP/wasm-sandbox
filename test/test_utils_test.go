@@ -9,7 +9,7 @@ import (
 	wasmevents "github.com/Cloud-RAMP/wasm-sandbox/pkg/wasm-events"
 )
 
-const NUM_MODULES = 6
+const NUM_MODULES = 10
 
 func dummyHandler(event *wasmevents.WASMEventInfo) (string, error) {
 	return "dummy", nil
@@ -28,7 +28,7 @@ func setupStore(tb testing.TB) *store.SandboxStore {
 		CleanupInterval:    5 * time.Second,
 		MaxIdleTime:        6 * time.Second,
 		MemoryLimitPages:   10,
-		MaxActiveModules:   5,
+		MaxActiveModules:   10,
 		CloseOnContextDone: true,
 		HandlerMap: wasmevents.NewHandlerMap().
 			AddHandler(wasmevents.ABORT, abortHandler).

@@ -4,10 +4,10 @@ import (
 	"context"
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/Cloud-RAMP/wasm-sandbox/internal/asmscript"
-	modulelocks "github.com/Cloud-RAMP/wasm-sandbox/internal/module-locks"
 	"github.com/Cloud-RAMP/wasm-sandbox/pkg/loader"
 	wasmevents "github.com/Cloud-RAMP/wasm-sandbox/pkg/wasm-events"
 	wsevents "github.com/Cloud-RAMP/wasm-sandbox/pkg/ws-events"
@@ -31,6 +31,7 @@ type SandboxStore struct {
 	maxIdleTime      time.Duration
 	cleanupInterval  time.Duration
 	maxExecutionTime time.Duration
+	poolSize         uint8
 	mu               sync.RWMutex // rw mutex might not be entirely necessary
 
 	// Map that the user of this package will need to instantiate.
@@ -45,15 +46,21 @@ type SandboxStore struct {
 }
 
 type ActiveModule struct {
-	// The actual WASM bytes being executed
-	module     api.Module
-	lastUsed   time.Time
+	// The compiled bytes of a WASM module
+	compiled wazero.CompiledModule
+
+	// A pool of running instances.
+	//
+	// Goroutines pull these off one at a time to avoid concurrent writes to memory
+	instances chan api.Module
+
+	// Atomic representation of when the module was last used
+	lastUsed atomic.Int64
+
+	// The module's ID
 	instanceId string
 
-	// A "wait group" is like a thread barrier. If you call wg.Wait(), it will wait until
-	// all threads that have incremented the counter are finished
-	//
-	// This is done so that we can wait for all requests to finish processing before shutting down the module
+	// Waitgroup so that we don't
 	wg sync.WaitGroup
 }
 
@@ -67,6 +74,7 @@ type SandboxStoreCfg struct {
 	HandlerMap         *wasmevents.HandlerMap
 	Ctx                context.Context
 	LoaderFunction     loader.LoaderFunction
+	PoolSize           uint8
 }
 
 // Execute a function on a given module
@@ -81,118 +89,45 @@ func (s *SandboxStore) ExecuteOnModule(ctx context.Context, wsEvent *wsevents.WS
 	if err != nil {
 		return err
 	}
-
 	if active == nil {
 		return fmt.Errorf("Active is nil after loading")
 	}
 
-	// create inner context with instanceId key / value
+	// Increment waitgroup. This way we can wait on all modules to be returned before closing
+	active.wg.Add(1)
+	defer active.wg.Done()
+
+	// Grab an instance from the pool — blocks if all instances are in use
+	instance := <-active.instances
+	defer func() { active.instances <- instance }()
+
+	// Update last used
+	active.lastUsed.Store(time.Now().UnixNano())
+
+	// Create inner context with instanceId key / value
 	ctx = context.WithValue(ctx, "instanceId", wsEvent.InstanceId)
 	ctx = context.WithValue(ctx, "connectionId", wsEvent.ConnectionId)
 	ctx = context.WithValue(ctx, "roomId", wsEvent.RoomId)
-
-	// Locks need to be held for the entire duration of module execution
-	modulelocks.Lock(wsEvent.InstanceId)
-	defer modulelocks.Unlock(wsEvent.InstanceId)
-
-	active.lastUsed = time.Now()
-
-	// write the information of the event in module memory so they can read it
-	ptr, memLen, err := asmscript.WriteWSEvent(&asmscript.ModuleContext{
-		Module: active.module,
-		Ctx:    ctx,
-	}, wsEvent)
 
 	// Add timeout (defaults to 5 seconds)
 	ctx, cancel := context.WithTimeout(ctx, s.maxExecutionTime)
 	defer cancel()
 
-	// this represents the number of current requests being processed
-	// the Done() method removes 1 from the waitgroup. necessary for concurrency
-	active.wg.Add(1)
-	defer active.wg.Done()
+	// Write the information of the event in module memory so they can read it
+	ptr, memLen, err := asmscript.WriteWSEvent(&asmscript.ModuleContext{
+		Module: instance,
+		Ctx:    ctx,
+	}, wsEvent)
+	if err != nil {
+		return err
+	}
 
-	// This call is blocking, so we can ensure that once it returns we are complete
-	onMessage := active.module.ExportedFunction(wsEvent.EventType.String())
+	onMessage := instance.ExportedFunction(wsEvent.EventType.String())
 	_, err = onMessage.Call(ctx, ptr, memLen)
 	if err != nil {
-		// logging.Logger.Errorf("%s operation failed: %v", wsEvent.EventType.String(), err)
 		fmt.Println(err)
 		return err
 	}
 
 	return nil
-}
-
-// Loads a given module into the sandbox store
-//
-// Returns an error if fetching the module failed
-func (s *SandboxStore) loadModule(moduleId string) (*ActiveModule, error) {
-	s.mu.RLock()
-	active, exists := s.activeModules[moduleId]
-	s.mu.RUnlock()
-
-	if exists {
-		return active, nil
-	}
-
-	s.loadingModulesMu.Lock()
-	signal, exists := s.loadingModules[moduleId]
-
-	// The chan which signifies that this module is being loaded already exists, some other process is doing it
-	if exists {
-		// logging.Logger.Infof("Concurrent fetches: waiting on %s", moduleId)
-		s.loadingModulesMu.Unlock()
-
-		// wait on the signal
-		// the max waiting time will be 5 seconds because of the time limit on fetching
-		<-signal
-
-		// if the module was loaded properly, this call will succeed and return the module
-		// if not, it will initiate the loading process itself
-		return s.loadModule(moduleId)
-	}
-
-	s.loadingModules[moduleId] = make(chan struct{})
-	s.loadingModulesMu.Unlock()
-
-	// signal that we are done loading if the function either returns or fails
-	defer func() {
-		s.loadingModulesMu.Lock()
-		defer s.loadingModulesMu.Unlock()
-
-		if ch, ok := s.loadingModules[moduleId]; ok {
-			close(ch)
-			delete(s.loadingModules, moduleId)
-		}
-	}()
-
-	// logging.Logger.Infof("Fetching module %s from external store", moduleId)
-
-	// Give the loader a 5 second timeout
-	// the cancel function is deferred to avoid "context leaks"
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	module, err := loader.Load(ctx, s.runtime, moduleId)
-	if err != nil {
-		return nil, err
-	}
-
-	mod := &ActiveModule{
-		module:     module,
-		lastUsed:   time.Now(),
-		instanceId: moduleId,
-	}
-
-	// Add module to map of active modules
-	// remove least recently used if we hit the limit
-	s.mu.Lock()
-	if len(s.activeModules) >= int(s.maxActiveModules) {
-		s.evictLRU()
-	}
-	s.activeModules[moduleId] = mod
-	s.mu.Unlock()
-
-	return mod, nil
 }

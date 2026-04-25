@@ -4,8 +4,6 @@ import (
 	"context"
 	"log/slog"
 	"time"
-
-	modulelocks "github.com/Cloud-RAMP/wasm-sandbox/internal/module-locks"
 )
 
 // Close all modules and remove them from the map
@@ -17,9 +15,10 @@ func (s *SandboxStore) Close(ctx context.Context) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	// remove all active modules from the map and close them
 	for id, active := range s.activeModules {
-		active.module.Close(ctx)
 		delete(s.activeModules, id)
+		active.Close()
 	}
 
 	// close the host module as well
@@ -30,6 +29,18 @@ func (s *SandboxStore) Close(ctx context.Context) error {
 	return s.runtime.Close(ctx)
 }
 
+// Shut down a singular module
+//
+// Remove all from the pool and close them, and finally close the compiled instance
+func (mod *ActiveModule) Close() {
+	mod.wg.Wait()
+	close(mod.instances)
+	for inst := range mod.instances {
+		inst.Close(context.Background())
+	}
+	mod.compiled.Close(context.Background())
+}
+
 // Evict the least recently used module from the cache
 //
 // Assumes that the lock is held before the function runs
@@ -38,26 +49,18 @@ func (s *SandboxStore) evictLRU() {
 	var oldestTime *time.Time
 
 	for mod := range s.activeModules {
-		modulelocks.RLock(mod)
-		if oldestTime == nil || s.activeModules[mod].lastUsed.Before(*oldestTime) {
-			oldestTime = &s.activeModules[mod].lastUsed
+		t := time.Unix(0, s.activeModules[mod].lastUsed.Load())
+		if oldestTime == nil || t.Before(*oldestTime) {
+			oldestTime = &t
 			lru = mod
 		}
-		modulelocks.RUnlock(mod)
 	}
 
 	// remove module from the map so no new requests can be sent to it
 	mod := s.activeModules[lru]
 	delete(s.activeModules, lru)
 
-	// logging.Logger.Infof("Removing LRU module %s", lru)
-
-	// detatch a goroutine to wait on the module's requests and then close it
-	go func() {
-		mod.wg.Wait()
-		modulelocks.Delete(lru)
-		mod.module.Close(context.Background())
-	}()
+	mod.Close()
 }
 
 func (s *SandboxStore) cleanupIdleModules() {
@@ -65,12 +68,11 @@ func (s *SandboxStore) cleanupIdleModules() {
 	defer s.mu.Unlock()
 
 	for id, active := range s.activeModules {
-		if time.Since(active.lastUsed) > s.maxIdleTime {
+		t := time.Unix(0, active.lastUsed.Load())
+		if time.Since(t) > s.maxIdleTime {
 			slog.Info("Removing idle store", "storeId", id)
 			delete(s.activeModules, id)
-			active.wg.Wait()
-			modulelocks.Delete(id)
-			active.module.Close(context.Background())
+			active.Close()
 		}
 	}
 }
