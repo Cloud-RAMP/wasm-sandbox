@@ -3,9 +3,6 @@ import { WSEvent } from "./protocol";
 
 export function onMessage(event: WSEvent): void {
   debug("User " + event.connectionId + " called onMessage");
-
-  const ctx = new Context();
-  ctx.room.broadcast(event.payload);
 }
 
 export function onJoin(event: WSEvent): void {

@@ -1,61 +1,72 @@
 package modulelocks
 
-import (
-	"sync"
-)
+import "sync"
+
+type entry struct {
+	mu   sync.RWMutex
+	refs int
+}
 
 type moduleLocks struct {
-	locks map[string]*sync.Mutex
-	mu    sync.RWMutex
+	entries map[string]*entry
+	mu      sync.Mutex // protects entries map only
 }
 
 var lockTable = moduleLocks{
-	locks: make(map[string]*sync.Mutex),
+	entries: make(map[string]*entry),
+}
+
+func acquire(instanceId string) *entry {
+	lockTable.mu.Lock()
+	e, ok := lockTable.entries[instanceId]
+	if !ok {
+		e = &entry{}
+		lockTable.entries[instanceId] = e
+	}
+	e.refs++
+	lockTable.mu.Unlock()
+	return e
+}
+
+func release(instanceId string) {
+	lockTable.mu.Lock()
+	e := lockTable.entries[instanceId]
+	e.refs--
+	if e.refs == 0 {
+		delete(lockTable.entries, instanceId)
+	}
+	lockTable.mu.Unlock()
 }
 
 func Lock(instanceId string) {
-	lockTable.mu.RLock()
-	lock, ok := lockTable.locks[instanceId]
-	lockTable.mu.RUnlock()
-
-	if ok {
-		lock.Lock()
-		return
-	}
-
-	lockTable.mu.Lock()
-	defer lockTable.mu.Unlock()
-
-	lock = &sync.Mutex{}
-	lockTable.locks[instanceId] = lock
-	lock.Lock()
+	e := acquire(instanceId)
+	e.mu.Lock()
 }
 
 func Unlock(instanceId string) {
-	lockTable.mu.RLock()
-	lock, ok := lockTable.locks[instanceId]
-	lockTable.mu.RUnlock()
-
-	if ok {
-		lock.Unlock()
-		return
-	}
-
 	lockTable.mu.Lock()
-	defer lockTable.mu.Unlock()
+	e := lockTable.entries[instanceId]
+	lockTable.mu.Unlock()
 
-	lock = &sync.Mutex{}
-	lockTable.locks[instanceId] = lock
-	lock.Unlock()
+	e.mu.Unlock()
+	release(instanceId)
 }
 
-func Delete(instanceId string) *sync.Mutex {
-	lockTable.mu.Lock()
-	defer lockTable.mu.Unlock()
+func RLock(instanceId string) {
+	e := acquire(instanceId)
+	e.mu.RLock()
+}
 
-	if lock, ok := lockTable.locks[instanceId]; ok {
-		delete(lockTable.locks, instanceId)
-		return lock
-	}
-	return nil
+func RUnlock(instanceId string) {
+	lockTable.mu.Lock()
+	e := lockTable.entries[instanceId]
+	lockTable.mu.Unlock()
+
+	e.mu.RUnlock()
+	release(instanceId)
+}
+
+func Delete(instanceId string) {
+	// Delete is now a no-op — release() cleans up automatically
+	// when the last goroutine is done with the lock
 }

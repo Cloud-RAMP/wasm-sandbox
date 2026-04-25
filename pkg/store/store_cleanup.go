@@ -36,11 +36,14 @@ func (s *SandboxStore) Close(ctx context.Context) error {
 func (s *SandboxStore) evictLRU() {
 	var lru string
 	var oldestTime *time.Time
+
 	for mod := range s.activeModules {
+		modulelocks.RLock(mod)
 		if oldestTime == nil || s.activeModules[mod].lastUsed.Before(*oldestTime) {
 			oldestTime = &s.activeModules[mod].lastUsed
 			lru = mod
 		}
+		modulelocks.RUnlock(mod)
 	}
 
 	// remove module from the map so no new requests can be sent to it
