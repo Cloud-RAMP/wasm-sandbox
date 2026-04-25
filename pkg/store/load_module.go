@@ -12,11 +12,12 @@ import (
 func (s *SandboxStore) loadModule(moduleId string) (*ActiveModule, error) {
 	s.mu.RLock()
 	active, exists := s.activeModules[moduleId]
-	s.mu.RUnlock()
-
 	if exists {
+		active.wg.Add(1)
+		s.mu.RUnlock()
 		return active, nil
 	}
+	s.mu.RUnlock()
 
 	s.loadingModulesMu.Lock()
 	signal, exists := s.loadingModules[moduleId]
@@ -70,6 +71,7 @@ func (s *SandboxStore) loadModule(moduleId string) (*ActiveModule, error) {
 		s.evictLRU()
 	}
 	s.activeModules[moduleId] = mod
+	mod.wg.Add(1)
 	s.mu.Unlock()
 
 	return mod, nil

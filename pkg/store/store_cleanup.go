@@ -18,7 +18,7 @@ func (s *SandboxStore) Close(ctx context.Context) error {
 	// remove all active modules from the map and close them
 	for id, active := range s.activeModules {
 		delete(s.activeModules, id)
-		active.Close()
+		active.Close(s.poolSize)
 	}
 
 	// close the host module as well
@@ -32,18 +32,17 @@ func (s *SandboxStore) Close(ctx context.Context) error {
 // Shut down a singular module
 //
 // Remove all from the pool and close them, and finally close the compiled instance
-func (mod *ActiveModule) Close() {
+func (mod *ActiveModule) Close(poolSize uint8) {
 	mod.wg.Wait()
-	close(mod.instances)
-	for inst := range mod.instances {
+
+	for range poolSize {
+		inst := <-mod.instances
 		inst.Close(context.Background())
 	}
 	mod.compiled.Close(context.Background())
 }
 
 // Evict the least recently used module from the cache
-//
-// Assumes that the lock is held before the function runs
 func (s *SandboxStore) evictLRU() {
 	var lru string
 	var oldestTime *time.Time
@@ -60,7 +59,7 @@ func (s *SandboxStore) evictLRU() {
 	mod := s.activeModules[lru]
 	delete(s.activeModules, lru)
 
-	mod.Close()
+	go mod.Close(s.poolSize)
 }
 
 func (s *SandboxStore) cleanupIdleModules() {
@@ -72,7 +71,7 @@ func (s *SandboxStore) cleanupIdleModules() {
 		if time.Since(t) > s.maxIdleTime {
 			slog.Info("Removing idle store", "storeId", id)
 			delete(s.activeModules, id)
-			active.Close()
+			go active.Close(s.poolSize)
 		}
 	}
 }

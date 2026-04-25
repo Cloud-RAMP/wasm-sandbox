@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -60,7 +61,6 @@ type ActiveModule struct {
 	// The module's ID
 	instanceId string
 
-	// Waitgroup so that we don't
 	wg sync.WaitGroup
 }
 
@@ -93,13 +93,16 @@ func (s *SandboxStore) ExecuteOnModule(ctx context.Context, wsEvent *wsevents.WS
 		return fmt.Errorf("Active is nil after loading")
 	}
 
-	// Increment waitgroup. This way we can wait on all modules to be returned before closing
-	active.wg.Add(1)
 	defer active.wg.Done()
 
 	// Grab an instance from the pool — blocks if all instances are in use
 	instance := <-active.instances
-	defer func() { active.instances <- instance }()
+	defer func() {
+		if r := recover(); r != nil {
+			slog.Error("Panic in ExecuteOnModule", "recover", r)
+		}
+		active.instances <- instance // always return the instance
+	}()
 
 	// Update last used
 	active.lastUsed.Store(time.Now().UnixNano())

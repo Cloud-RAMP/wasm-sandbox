@@ -12,7 +12,7 @@ import (
 
 func BenchmarkParallelSingleModule(b *testing.B) {
 	// setup text
-	benchStore := setupStore(b)
+	benchStore := setupStore(b, 1)
 	benchCtx := context.Background()
 
 	benchEvent := &wsevents.WSEventInfo{
@@ -45,7 +45,7 @@ func BenchmarkParallelSingleModule(b *testing.B) {
 }
 
 func BenchmarkParallelModuleEviction(b *testing.B) {
-	store := setupStore(b)
+	store := setupStore(b, 5)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -60,7 +60,7 @@ func BenchmarkParallelModuleEviction(b *testing.B) {
 
 	events := make([]*wsevents.WSEventInfo, 0, NUM_MODULES)
 	events = append(events, &event)
-	for i := range NUM_MODULES {
+	for i := range NUM_MODULES - 1 {
 		e := event
 		e.InstanceId = fmt.Sprintf("./modules/%d.wasm", i+2)
 		events = append(events, &e)
@@ -91,7 +91,7 @@ func BenchmarkParallelModuleEviction(b *testing.B) {
 }
 
 func BenchmarkMultipleModulesParallel(b *testing.B) {
-	store := setupStore(b)
+	store := setupStore(b, NUM_MODULES)
 	ctx := context.Background()
 	// defer cancel()
 

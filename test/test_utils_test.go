@@ -22,13 +22,13 @@ func abortHandler(event *wasmevents.WASMEventInfo) (string, error) {
 	return "", nil
 }
 
-func setupStore(tb testing.TB) *store.SandboxStore {
+func setupStore(tb testing.TB, maxModules int) *store.SandboxStore {
 	tb.Helper()
 	store, err := store.NewSandboxStore(tb.Context(), store.SandboxStoreCfg{
 		CleanupInterval:    5 * time.Second,
 		MaxIdleTime:        6 * time.Second,
 		MemoryLimitPages:   10,
-		MaxActiveModules:   10,
+		MaxActiveModules:   uint16(maxModules),
 		CloseOnContextDone: true,
 		HandlerMap: wasmevents.NewHandlerMap().
 			AddHandler(wasmevents.ABORT, abortHandler).

@@ -12,7 +12,7 @@ import (
 
 // BenchmarkSimpleSingleModule-8              78194             13373 ns/op           24783 B/op        39 allocs/op
 func BenchmarkSimpleSingleModule(b *testing.B) {
-	store := setupStore(b)
+	store := setupStore(b, 1)
 	ctx := b.Context()
 
 	event := &wsevents.WSEventInfo{
@@ -39,7 +39,7 @@ func BenchmarkSimpleSingleModule(b *testing.B) {
 }
 
 func BenchmarkSimpleModuleEviction(b *testing.B) {
-	store := setupStore(b)
+	store := setupStore(b, 5)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -88,7 +88,7 @@ func BenchmarkSimpleModuleEviction(b *testing.B) {
 }
 
 func BenchmarkMultipleModulesNoEviction(b *testing.B) {
-	store := setupStore(b)
+	store := setupStore(b, 5)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -137,7 +137,7 @@ func BenchmarkMultipleModulesNoEviction(b *testing.B) {
 }
 
 func BenchmarkZipf(b *testing.B) {
-	store := setupStore(b)
+	store := setupStore(b, 5)
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
