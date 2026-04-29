@@ -30,6 +30,7 @@ func setupStore(tb testing.TB, maxModules int) *store.SandboxStore {
 		MemoryLimitPages:   10,
 		MaxActiveModules:   uint16(maxModules),
 		CloseOnContextDone: true,
+		PoolSize:           uint8(10),
 		HandlerMap: wasmevents.NewHandlerMap().
 			AddHandler(wasmevents.ABORT, abortHandler).
 			AddHandler(wasmevents.GET, dummyHandler).
