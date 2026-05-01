@@ -55,6 +55,18 @@ export class Context {
     const valPtr = env._fetch(to_usize(url), url.length, to_usize(method), method.length, to_usize(body), body.length);
     return get_result(valPtr);
   }
+
+  /**
+   * Send a message to the given recipient from "SEVER" instead of your connection ID
+   * 
+   * @param recipient the user to send it to
+   * @param message the message to send to the user
+   * @returns a status representing the success of the operation
+   */
+  serverMessage(recipient: string, message: string): Status {
+    const errPtr = env._sendMessage(to_usize(recipient), recipient.length, to_usize(message), message.length);
+    return get_status(errPtr);
+  }
 }
 
 /**

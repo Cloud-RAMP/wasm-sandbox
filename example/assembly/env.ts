@@ -43,6 +43,10 @@ export declare function _getUsers(): usize;
 export declare function _sendMessage(userPtr: usize, userLen: usize, msgPtr: usize, msgLen: usize): usize;
 
 //@ts-ignore
+@external("env", "serverMessage")
+export declare function _serverMessage(userPtr: usize, userLen: usize, msgPtr: usize, msgLen: usize): usize;
+
+//@ts-ignore
 @external("env", "closeConnection")
 export declare function _closeConnection(targetPtr: usize, targetLen: usize): usize;
 

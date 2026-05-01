@@ -47,6 +47,9 @@ const (
 	// Send a message to a specific user
 	SEND_MESSAGE
 
+	// Sends a message to a specific user but from the server
+	SERVER_MESSAGE
+
 	// close a target user's connection
 	CLOSE_CONNECTION
 
@@ -85,6 +88,7 @@ var eventStrings = [...]string{
 	"debug",
 	"getUsers",
 	"sendMessage",
+	"serverMessage",
 	"closeConnection",
 	"fetch",
 }
