@@ -44,6 +44,7 @@ func setupStore(tb testing.TB, maxModules int) *store.SandboxStore {
 			AddHandler(wasmevents.DEBUG, dummyHandler).
 			AddHandler(wasmevents.GET_USERS, dummyHandler).
 			AddHandler(wasmevents.SEND_MESSAGE, dummyHandler).
+			AddHandler(wasmevents.SERVER_MESSAGE, dummyHandler).
 			AddHandler(wasmevents.CLOSE_CONNECTION, dummyHandler).
 			AddHandler(wasmevents.FETCH, dummyHandler),
 		LoaderFunction: loader.MockLoaderFunction,
