@@ -1,4 +1,4 @@
-import { decodeWSEvent } from "./protocol";
+import { decodeWSEvent } from "./sdk";
 import { onMessage, onJoin, onLeave, onError } from "./user";
 
 // Internal function to be called by the WebAssembly

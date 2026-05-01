@@ -1,5 +1,4 @@
-import { Context, debug } from "./sdk";
-import { WSEvent } from "./protocol";
+import { WSEvent, Context, debug } from "./sdk";
 
 export function onMessage(event: WSEvent): void {
   const ctx = new Context();
