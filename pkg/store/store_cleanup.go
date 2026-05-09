@@ -37,8 +37,14 @@ func (mod *ActiveModule) Close(poolSize uint8) {
 
 	for range poolSize {
 		inst := <-mod.instances
-		inst.Close(context.Background())
+		if inst != nil {
+			// allow 5 seconds for moduel to close
+			closeCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+			defer cancel()
+			inst.Close(closeCtx)
+		}
 	}
+
 	mod.compiled.Close(context.Background())
 	close(mod.instances)
 }
